@@ -13,6 +13,7 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300 }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api', require('./routes/auth'));
+app.use('/api/admin', require('./routes/admin'));
 app.use('/api/patients', require('./routes/patients'));
 app.use('/api/doctors', require('./routes/doctors'));
 app.use('/api/appointments', require('./routes/appointments'));
@@ -20,6 +21,7 @@ app.use('/api/pharmacy', require('./routes/pharmacy'));
 app.use('/api/billing', require('./routes/billing'));
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'careflow' }));
+app.use('/api', (_req, res) => res.status(404).json({ error: 'API endpoint not found' }));
 app.use((_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.use((error, _req, res, _next) => {
   console.error(error);

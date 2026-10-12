@@ -45,9 +45,26 @@ router.get('/:id', requirePatient, async (req, res, next) => {
       first_name AS firstName, last_name AS lastName, email, phone, dob, sex, address,
       created_at AS createdAt FROM patients WHERE id = ? LIMIT 1`, [patientId]);
     const [appointments] = await pool.execute(`SELECT a.id, a.department, a.preferred_date AS preferredDate,
-      a.appointment_at AS appointmentAt, a.reason, a.status, a.created_at AS createdAt
-      FROM appointments a WHERE a.patient_id = ? ORDER BY a.preferred_date DESC, a.id DESC`, [patientId]);
-    res.json({ patient: patientRows[0], appointments });
+      a.appointment_at AS appointmentAt, a.reason, a.status, a.created_at AS createdAt,
+      CONCAT('Dr. ', d.first_name, ' ', d.last_name) AS doctor
+      FROM appointments a LEFT JOIN doctors d ON d.doctor_id = a.doctor_id
+      WHERE a.patient_id = ? ORDER BY a.preferred_date DESC, a.id DESC`, [patientId]);
+    const [consultations] = await pool.execute(`SELECT c.consultation_id AS id,
+      c.appointment_id AS appointmentId, c.diagnosis, c.clinical_notes AS clinicalNotes,
+      c.treatment_plan AS treatmentPlan, c.follow_up_date AS followUpDate,
+      c.created_at AS createdAt, a.department, a.appointment_at AS appointmentAt,
+      a.status, CONCAT('Dr. ', d.first_name, ' ', d.last_name) AS doctor
+      FROM consultations c JOIN appointments a ON a.id = c.appointment_id
+      LEFT JOIN doctors d ON d.doctor_id = a.doctor_id
+      WHERE a.patient_id = ? ORDER BY c.created_at DESC`, [patientId]);
+    const [prescriptions] = await pool.execute(`SELECT p.prescription_id AS id,
+      p.quantity, p.instructions, p.status, p.created_at AS createdAt,
+      m.medication_name AS medication, m.dosage
+      FROM prescriptions p JOIN consultations c ON c.consultation_id = p.consultation_id
+      JOIN appointments a ON a.id = c.appointment_id
+      JOIN pharmacy_inventory m ON m.medication_id = p.medication_id
+      WHERE a.patient_id = ? ORDER BY p.created_at DESC`, [patientId]);
+    res.json({ patient: patientRows[0], appointments, consultations, prescriptions });
   } catch (error) { next(error); }
 });
 
