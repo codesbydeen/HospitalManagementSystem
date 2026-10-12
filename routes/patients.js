@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const pool = require('../db');
+const { requireAdmin, requirePatient } = require('../middleware/patient-session');
 const router = express.Router();
 
 const patientRules = [
@@ -12,16 +13,16 @@ const patientRules = [
   body('email').optional({ values: 'falsy' }).isEmail().normalizeEmail()
 ];
 
-router.get('/', async (_req, res, next) => {
+router.get('/', requireAdmin, async (_req, res, next) => {
   try {
     const [rows] = await pool.query(`SELECT id, medical_record_number AS recordNumber,
       CONCAT(first_name, ' ', last_name) AS name, dob AS dateOfBirth, phone, email,
-      created_at AS createdAt FROM patients ORDER BY created_at DESC LIMIT 100`);
+      created_at AS createdAt FROM patients ORDER BY created_at DESC`);
     res.json(rows);
   } catch (error) { next(error); }
 });
 
-router.post('/', patientRules, async (req, res, next) => {
+router.post('/', requireAdmin, patientRules, async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   try {
@@ -35,7 +36,7 @@ router.post('/', patientRules, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-router.get('/:id', require('../middleware/patient-session').requirePatient, async (req, res, next) => {
+router.get('/:id', requirePatient, async (req, res, next) => {
   const patientId = Number(req.params.id);
   if (!Number.isSafeInteger(patientId) || patientId < 1) return res.status(400).json({ error: 'Invalid patient ID' });
   if (req.patient.id !== patientId) return res.status(403).json({ error: 'You can only view your own patient profile' });

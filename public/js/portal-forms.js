@@ -28,7 +28,15 @@ if (portalForm) {
         throw new Error(
           result.error || "Unable to complete your request. Please try again.",
         );
+      if (!["patient", "admin"].includes(result.session?.role))
+        throw new Error(
+          "Your account role is missing or invalid. Contact an administrator.",
+        );
       sessionStorage.setItem("careflowPatient", JSON.stringify(result.session));
+      if (result.session.role === "admin") {
+        location.assign("admin.html");
+        return;
+      }
       const nextPage = new URLSearchParams(location.search).get("next");
       location.assign(
         nextPage === "appointment-booking.html"

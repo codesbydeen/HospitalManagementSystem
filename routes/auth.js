@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const pool = require('../db');
-const { clearSessionCookie, createSession, hashToken, requirePatient, sessionToken } = require('../middleware/patient-session');
+const { clearSessionCookie, createSession, hashToken, requireAuthenticated, sessionToken } = require('../middleware/patient-session');
 
 const router = express.Router();
 const registrationRules = [
@@ -25,7 +25,7 @@ router.post('/register', registrationRules, async (req, res, next) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [recordNumber, req.body.firstName, req.body.lastName,
       req.body.email, passwordHash, req.body.phone, req.body.dob, req.body.sex || 'Prefer not to say']);
     await createSession(result.insertId, res);
-    return res.status(201).json({ success: true, session: { patientId: result.insertId, firstName: req.body.firstName, lastName: req.body.lastName } });
+    return res.status(201).json({ success: true, session: { id: result.insertId, firstName: req.body.firstName, lastName: req.body.lastName, role: 'patient' } });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'An account with this email already exists' });
     return next(error);
@@ -36,20 +36,24 @@ router.post('/login', [body('email').trim().isEmail().normalizeEmail(), body('pa
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ error: 'Enter a valid email address and password' });
   try {
-    const [rows] = await pool.execute(`SELECT id, first_name AS firstName, last_name AS lastName, email, password_hash AS passwordHash
+    const [rows] = await pool.execute(`SELECT id, first_name AS firstName, last_name AS lastName, email,
+      password_hash AS passwordHash, role
       FROM patients WHERE email = ? LIMIT 1`, [req.body.email]);
     const patient = rows[0];
     if (!patient?.passwordHash || !await bcrypt.compare(req.body.password, patient.passwordHash)) {
       return res.status(401).json({ error: 'Email or password is incorrect' });
     }
+    if (!['patient', 'admin'].includes(patient.role)) {
+      return res.status(403).json({ error: 'Your account role is missing or invalid. Contact an administrator.' });
+    }
     await createSession(patient.id, res);
-    return res.json({ success: true, session: { patientId: patient.id, firstName: patient.firstName, lastName: patient.lastName } });
+    return res.json({ success: true, session: { id: patient.id, firstName: patient.firstName, lastName: patient.lastName, role: patient.role } });
   } catch (error) {
     return next(error);
   }
 });
 
-router.post('/logout', requirePatient, async (req, res, next) => {
+router.post('/logout', requireAuthenticated, async (req, res, next) => {
   const token = sessionToken(req);
   try {
     await pool.execute('DELETE FROM patient_sessions WHERE token_hash = ?', [hashToken(token)]);
@@ -60,8 +64,9 @@ router.post('/logout', requirePatient, async (req, res, next) => {
   }
 });
 
-router.get('/session', requirePatient, (req, res) => {
-  res.json({ success: true, session: req.patient });
+router.get('/session', requireAuthenticated, (req, res) => {
+  const { id, firstName, lastName, role } = req.patient;
+  res.json({ success: true, session: { id, firstName, lastName, role } });
 });
 
 module.exports = router;

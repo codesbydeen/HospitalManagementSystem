@@ -25,6 +25,14 @@ async function loadPatientPortal() {
     const sessionResult = await sessionResponse.json();
     if (!sessionResponse.ok)
       throw new Error(sessionResult.error || "Unable to load your account.");
+    if (sessionResult.session.role === "admin") {
+      location.assign("admin.html");
+      return;
+    }
+    if (sessionResult.session.role !== "patient")
+      throw new Error(
+        "Your account role is missing or invalid. Contact an administrator.",
+      );
     const response = await fetch(`/api/patients/${sessionResult.session.id}`);
     const result = await response.json();
     if (!response.ok)

@@ -1,8 +1,9 @@
 const express = require('express');
 const pool = require('../db');
+const { requireAdmin } = require('../middleware/patient-session');
 const router = express.Router();
 
-router.get('/inventory', async (_req, res, next) => {
+router.get('/inventory', requireAdmin, async (_req, res, next) => {
   try {
     const [rows] = await pool.query(`SELECT medication_id AS id, medication_name AS name, dosage,
       stock_quantity AS stock, reorder_level AS reorderLevel, unit_price AS unitPrice, expiry_date AS expiryDate,

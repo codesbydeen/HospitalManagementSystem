@@ -1,9 +1,10 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const pool = require('../db');
+const { requireAdmin, requirePatient } = require('../middleware/patient-session');
 const router = express.Router();
 
-router.get('/', async (_req, res, next) => {
+router.get('/', requireAdmin, async (_req, res, next) => {
   try {
     const [rows] = await pool.query(`SELECT a.id, a.appointment_at AS appointmentAt,
       a.reason, a.status, a.source, CONCAT(p.first_name, ' ', p.last_name) AS patient,
@@ -15,7 +16,7 @@ router.get('/', async (_req, res, next) => {
   } catch (error) { next(error); }
 });
 
-router.post('/', require('../middleware/patient-session').requirePatient, [
+router.post('/', requirePatient, [
   body('department').trim().isLength({ min: 2, max: 120 }),
   body('preferredDate').isISO8601({ strict: true, strictSeparator: true }),
   body('preferredTime').optional().matches(/^([01]\d|2[0-3]):[0-5]\d$/),
@@ -36,7 +37,7 @@ router.post('/', require('../middleware/patient-session').requirePatient, [
   }
 });
 
-router.patch('/:id/status', body('status').isIn(['Pending', 'Scheduled', 'Checked in', 'Completed', 'Cancelled']), async (req, res, next) => {
+router.patch('/:id/status', requireAdmin, body('status').isIn(['Pending', 'Scheduled', 'Checked in', 'Completed', 'Cancelled']), async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   try {

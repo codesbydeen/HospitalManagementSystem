@@ -121,6 +121,15 @@ function pill(value) {
         : "";
   return `<span class="pill ${cls}">${value}</span>`;
 }
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character]);
+}
 async function dashboard() {
   const appointments = await get("appointments", mock.appointments);
   const inventory = await get("pharmacy/inventory", mock.inventory);
@@ -144,22 +153,92 @@ async function dashboard() {
       .join("")}</ul></div>`;
 }
 async function patients() {
-  const patients = await get("patients", mock.patients);
+  let patients;
+  try {
+    const response = await fetch("/api/patients");
+    const result = await response.json();
+    if (!response.ok)
+      throw new Error(result.error || "Unable to load the patient directory.");
+    patients = result;
+  } catch (error) {
+    app.innerHTML = page(
+      "Patients & EHR",
+      "Register patients and keep their clinical records current.",
+    );
+    const message = document.createElement("p");
+    message.className = "portal-feedback error";
+    message.textContent = error.message;
+    app.append(message);
+    return;
+  }
   app.innerHTML =
     page(
       "Patients & EHR",
       "Register patients and keep their clinical records current.",
       '<button class="primary-btn" id="new-patient">+ New patient</button>',
     ) +
-    `<div class="tabs"><button class="tab active">All patients</button><button class="tab">Recently viewed</button><button class="tab">Archived</button></div><div class="surface panel"><div class="toolbar"><h2>Patient directory</h2><input class="search" id="patient-search" placeholder="Search patients..." aria-label="Search patients"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Patient</th><th>Record number</th><th>Date of birth</th><th>Contact</th><th>Action</th></tr></thead><tbody id="patient-rows">${patients.map((p) => `<tr><td><strong>${p.name}</strong><span class="muted">${p.email || "No email recorded"}</span></td><td>${p.recordNumber}</td><td>${new Date(p.dateOfBirth).toLocaleDateString()}</td><td>${p.phone}</td><td><button class="secondary-btn">View EHR</button></td></tr>`).join("")}</tbody></table></div></div>`;
+    `<div class="tabs"><button class="tab active" data-directory="patients">Patients</button><button class="tab" data-directory="doctors">Doctors</button></div><div class="surface panel" id="directory-content"></div>`;
+  const directory = document.querySelector("#directory-content");
+  const showPatients = () => {
+    directory.innerHTML =
+      `<div class="toolbar"><h2>Patient directory</h2><input class="search" id="patient-search" placeholder="Search patients..." aria-label="Search patients"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Patient</th><th>Record number</th><th>Date of birth</th><th>Contact</th></tr></thead><tbody id="patient-rows">${patients.map((p) => `<tr><td><strong>${escapeHtml(p.name)}</strong><span class="muted">${escapeHtml(p.email || "No email recorded")}</span></td><td>${escapeHtml(p.recordNumber)}</td><td>${escapeHtml(new Date(p.dateOfBirth).toLocaleDateString())}</td><td>${escapeHtml(p.phone)}</td></tr>`).join("")}</tbody></table></div>`;
+    document.querySelector("#patient-search").oninput = (event) =>
+      [...document.querySelectorAll("#patient-rows tr")].forEach(
+        (row) =>
+          (row.hidden = !row.textContent
+            .toLowerCase()
+            .includes(event.target.value.toLowerCase())),
+      );
+  };
+  showPatients();
   document.querySelector("#new-patient").onclick = patientForm;
-  document.querySelector("#patient-search").oninput = (event) =>
-    [...document.querySelectorAll("#patient-rows tr")].forEach(
-      (row) =>
-        (row.hidden = !row.textContent
-          .toLowerCase()
-          .includes(event.target.value.toLowerCase())),
-    );
+  document.querySelectorAll("[data-directory]").forEach((button) => {
+    button.onclick = async () => {
+      document.querySelectorAll("[data-directory]").forEach((tab) =>
+        tab.classList.toggle("active", tab === button),
+      );
+      if (button.dataset.directory === "patients") {
+        showPatients();
+        return;
+      }
+      directory.replaceChildren();
+      const heading = document.createElement("h2");
+      heading.textContent = "Doctor directory";
+      directory.append(heading);
+      try {
+        const response = await fetch("/api/doctors/directory");
+        const result = await response.json();
+        if (!response.ok)
+          throw new Error(result.error || "Unable to load the doctor directory.");
+        const table = document.createElement("table");
+        table.className = "data-table";
+        table.innerHTML = "<thead><tr><th>Doctor</th><th>Specialty</th><th>License</th><th>Contact</th><th>Status</th></tr></thead>";
+        const body = document.createElement("tbody");
+        result.forEach((doctor) => {
+          const row = document.createElement("tr");
+          [
+            doctor.name,
+            doctor.specialty,
+            doctor.licenseNumber,
+            [doctor.email, doctor.phone].filter(Boolean).join(" · ") || "No contact recorded",
+            doctor.isActive ? "Active" : "Inactive",
+          ].forEach((value) => {
+            const cell = document.createElement("td");
+            cell.textContent = value || "";
+            row.append(cell);
+          });
+          body.append(row);
+        });
+        table.append(body);
+        directory.append(table);
+      } catch (error) {
+        const message = document.createElement("p");
+        message.className = "portal-feedback error";
+        message.textContent = error.message;
+        directory.append(message);
+      }
+    };
+  });
 }
 function patientForm() {
   app.innerHTML =
@@ -177,12 +256,13 @@ function patientForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error();
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.error || "Unable to create the patient record.");
       showToast("Patient record created");
       location.hash = "patients";
-    } catch {
-      showToast("Demo mode: patient record ready to sync");
-      location.hash = "patients";
+    } catch (error) {
+      showToast(error.message || "Unable to create the patient record.");
     }
   };
 }
@@ -287,7 +367,7 @@ function appointmentBooking() {
       "Book an appointment",
       "Find a time that works for your care.",
     ) +
-    `<div class="booking-layout"><aside class="surface filter-panel"><div class="panel-header"><h2>Find care</h2><span class="muted">Step 1</span></div><div class="field"><label for="booking-specialty">Specialty</label><select id="booking-specialty"><option>General medicine</option><option>Cardiology</option><option>Dermatology</option><option>Paediatrics</option></select></div><div class="field"><label for="booking-date">Preferred date</label><input id="booking-date" type="date" value="2026-09-03"></div><div class="field"><label for="booking-type">Visit type</label><div class="segmented"><button class="segment active" type="button">In person</button><button class="segment" type="button">Video call</button></div></div><button class="primary-btn wide" id="find-slots">Find availability</button></aside><section class="booking-main"><div class="surface panel"><div class="panel-header"><div><span class="section-kicker">Available clinicians</span><h2>Choose your clinician</h2></div><span class="muted">Thursday, 03 Sep</span></div><div class="clinician selected"><div class="avatar">NM</div><div><strong>Dr. Nandi Mokoena</strong><small class="muted">General medicine · 8 years experience</small></div><span class="pill">Available</span></div><div class="clinician"><div class="avatar">JS</div><div><strong>Dr. James Smith</strong><small class="muted">General medicine · 12 years experience</small></div><span class="muted">Next available tomorrow</span></div></div><div class="surface panel"><div class="panel-header"><div><span class="section-kicker">Available times</span><h2>Select a time</h2></div><span class="muted">30 minute visit</span></div><div class="time-grid">${["08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "13:30", "14:00", "14:30"].map((time, index) => `<button class="time-slot ${index === 1 ? "chosen" : ""}" type="button">${time}</button>`).join("")}</div><div class="form-actions"><button class="primary-btn" id="confirm-booking">Continue to patient details</button></div></div></section><aside class="surface schedule-panel"><div class="panel-header"><h2>Your booking</h2><span class="pill warn">Not confirmed</span></div><div class="booking-summary"><span class="muted">Specialty</span><strong id="summary-specialty">General medicine</strong><span class="muted">Clinician</span><strong>Dr. Nandi Mokoena</strong><span class="muted">Date & time</span><strong id="summary-time">03 Sep 2026 · 09:00</strong></div><button class="secondary-btn wide" id="clear-booking">Clear selection</button></aside></div>`;
+    `<div class="booking-layout"><aside class="surface filter-panel"><div class="panel-header"><h2>Find care</h2><span class="muted">Step 1</span></div><div class="field"><label for="booking-specialty">Specialty</label><select id="booking-specialty"><option value="">Loading specialties…</option></select></div><div class="field"><label for="booking-date">Preferred date</label><input id="booking-date" type="date" value="2026-09-03"></div><div class="field"><label for="booking-type">Visit type</label><div class="segmented"><button class="segment active" type="button">In person</button><button class="segment" type="button">Video call</button></div></div><button class="primary-btn wide" id="find-slots">Find availability</button></aside><section class="booking-main"><div class="surface panel"><div class="panel-header"><div><span class="section-kicker">Available clinicians</span><h2>Choose your clinician</h2></div><span class="muted">Thursday, 03 Sep</span></div><div id="clinician-list" class="muted">Loading clinicians…</div></div><div class="surface panel"><div class="panel-header"><div><span class="section-kicker">Available times</span><h2>Select a time</h2></div><span class="muted">30 minute visit</span></div><div class="time-grid">${["08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "13:30", "14:00", "14:30"].map((time, index) => `<button class="time-slot ${index === 1 ? "chosen" : ""}" type="button">${time}</button>`).join("")}</div><div class="form-actions"><button class="primary-btn" id="confirm-booking">Continue to patient details</button></div></div></section><aside class="surface schedule-panel"><div class="panel-header"><h2>Your booking</h2><span class="pill warn">Not confirmed</span></div><div class="booking-summary"><span class="muted">Specialty</span><strong id="summary-specialty">Loading…</strong><span class="muted">Clinician</span><strong id="summary-clinician">Select a clinician</strong><span class="muted">Date & time</span><strong id="summary-time">03 Sep 2026 · 09:00</strong></div><button class="secondary-btn wide" id="clear-booking">Clear selection</button></aside></div>`;
   document.querySelectorAll(".time-slot").forEach(
     (slot) =>
       (slot.onclick = () => {
@@ -335,7 +415,48 @@ const views = {
   "consultation-history": consultationHistory,
   "billing-notifications": billingNotifications,
 };
-function route() {
+async function route() {
+  if (document.querySelector(".sidebar")) {
+    try {
+      const response = await fetch("/api/session");
+      if (response.status === 401) {
+        location.assign("patient-login.html");
+        return;
+      }
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.error || "Unable to verify your account.");
+      if (result.session.role === "patient") {
+        location.assign("consultation-history.html");
+        return;
+      }
+      if (result.session.role !== "admin") {
+        location.assign("patient-login.html");
+        return;
+      }
+      const currentUserName = [result.session.firstName, result.session.lastName]
+        .filter(Boolean)
+        .join(" ");
+      if (!currentUserName) {
+        app.textContent = "Your account name is unavailable. Please contact an administrator.";
+        return;
+      }
+      document.querySelectorAll(".user-card strong").forEach((element) => {
+        element.textContent = currentUserName;
+      });
+      const initials = [result.session.firstName, result.session.lastName]
+        .filter(Boolean)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase();
+      document.querySelectorAll(".user-card .avatar, .topbar .avatar-light").forEach((element) => {
+        element.textContent = initials;
+      });
+    } catch (error) {
+      app.textContent = error.message;
+      return;
+    }
+  }
   const name =
     location.hash.slice(1) || document.body.dataset.page || "dashboard";
   const view = views[name] || dashboard;

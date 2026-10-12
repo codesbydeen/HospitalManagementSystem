@@ -36,22 +36,35 @@ async function createSession(patientId, res) {
   setSessionCookie(res, token);
 }
 
-async function requirePatient(req, res, next) {
-  const token = sessionToken(req);
-  if (!token) return res.status(401).json({ error: 'Please log in to continue' });
-  try {
-    const [rows] = await pool.execute(`SELECT p.id, p.first_name AS firstName, p.last_name AS lastName,
-      p.email, p.phone, p.dob FROM patient_sessions s JOIN patients p ON p.id = s.patient_id
-      WHERE s.token_hash = ? AND s.expires_at > UTC_TIMESTAMP() LIMIT 1`, [hashToken(token)]);
-    if (!rows.length) {
-      clearSessionCookie(res);
-      return res.status(401).json({ error: 'Your session has expired. Please log in again.' });
+function requireRole(allowedRoles) {
+  return async (req, res, next) => {
+    const token = sessionToken(req);
+    if (!token) return res.status(401).json({ error: 'Please log in to continue' });
+    try {
+      const [rows] = await pool.execute(`SELECT p.id, p.first_name AS firstName, p.last_name AS lastName,
+        p.email, p.phone, p.dob, p.role FROM patient_sessions s JOIN patients p ON p.id = s.patient_id
+        WHERE s.token_hash = ? AND s.expires_at > UTC_TIMESTAMP() LIMIT 1`, [hashToken(token)]);
+      if (!rows.length) {
+        clearSessionCookie(res);
+        return res.status(401).json({ error: 'Your session has expired. Please log in again.' });
+      }
+      if (!['patient', 'admin'].includes(rows[0].role)) {
+        clearSessionCookie(res);
+        return res.status(403).json({ error: 'Your account role is missing or invalid. Contact an administrator.' });
+      }
+      if (!allowedRoles.includes(rows[0].role)) {
+        return res.status(403).json({ error: 'You do not have permission to access this resource' });
+      }
+      req.patient = rows[0];
+      return next();
+    } catch (error) {
+      return next(error);
     }
-    req.patient = rows[0];
-    return next();
-  } catch (error) {
-    return next(error);
-  }
+  };
 }
 
-module.exports = { clearSessionCookie, createSession, hashToken, requirePatient, sessionToken };
+const requireAuthenticated = requireRole(['patient', 'admin']);
+const requirePatient = requireRole(['patient']);
+const requireAdmin = requireRole(['admin']);
+
+module.exports = { clearSessionCookie, createSession, hashToken, requireAdmin, requireAuthenticated, requirePatient, sessionToken };

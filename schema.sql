@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS patients (
   last_name VARCHAR(80) NOT NULL,
   email VARCHAR(160) UNIQUE,
   password_hash VARCHAR(255),
+  role ENUM('patient','admin') NOT NULL DEFAULT 'patient',
   phone VARCHAR(30) NOT NULL,
   dob DATE NOT NULL,
   sex ENUM('Female','Male','Other','Prefer not to say') NOT NULL DEFAULT 'Prefer not to say',
