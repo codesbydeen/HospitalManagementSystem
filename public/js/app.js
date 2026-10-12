@@ -1,0 +1,350 @@
+const app = document.querySelector("#app");
+const pageLabel = document.querySelector("#page-label");
+const toast = document.querySelector("#toast");
+const mock = {
+  patients: [
+    {
+      id: 1,
+      recordNumber: "CF-24081",
+      name: "Amara Williams",
+      dateOfBirth: "1989-04-12",
+      phone: "+27 82 431 2288",
+      email: "amara@example.com",
+    },
+    {
+      id: 2,
+      recordNumber: "CF-24080",
+      name: "Liam Petersen",
+      dateOfBirth: "1976-09-28",
+      phone: "+27 71 992 1034",
+      email: "liam@example.com",
+    },
+  ],
+  appointments: [
+    {
+      id: 1,
+      appointmentAt: "2026-09-03T09:00:00",
+      patient: "Amara Williams",
+      doctor: "Dr. Nandi Mokoena",
+      specialty: "General medicine",
+      reason: "Annual check-up",
+      status: "Checked in",
+      source: "Online",
+    },
+    {
+      id: 2,
+      appointmentAt: "2026-09-03T10:30:00",
+      patient: "Liam Petersen",
+      doctor: "Dr. James Smith",
+      specialty: "Cardiology",
+      reason: "Follow-up",
+      status: "Scheduled",
+      source: "Reception",
+    },
+  ],
+  inventory: [
+    {
+      id: 1,
+      name: "Amoxicillin",
+      dosage: "500mg",
+      stock: 24,
+      reorderLevel: 20,
+      unitPrice: 4.5,
+      expiryDate: "2027-03-18",
+      alert: "In stock",
+    },
+    {
+      id: 2,
+      name: "Metformin",
+      dosage: "850mg",
+      stock: 8,
+      reorderLevel: 20,
+      unitPrice: 3.2,
+      expiryDate: "2026-10-04",
+      alert: "Low stock",
+    },
+    {
+      id: 3,
+      name: "Salbutamol inhaler",
+      dosage: "100mcg",
+      stock: 14,
+      reorderLevel: 10,
+      unitPrice: 8.9,
+      expiryDate: "2026-09-22",
+      alert: "Expiring soon",
+    },
+  ],
+  invoices: [
+    {
+      id: "INV-1048",
+      patient: "Amara Williams",
+      total: 145.5,
+      status: "Paid",
+      issuedAt: "2026-09-02",
+    },
+    {
+      id: "INV-1047",
+      patient: "Liam Petersen",
+      total: 320,
+      status: "Unpaid",
+      issuedAt: "2026-09-01",
+    },
+  ],
+};
+async function get(path, fallback) {
+  try {
+    const response = await fetch(`/api/${path}`);
+    if (!response.ok) throw new Error();
+    return await response.json();
+  } catch {
+    return fallback;
+  }
+}
+function money(value) {
+  return `R ${Number(value).toFixed(2)}`;
+}
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2800);
+}
+function page(title, subtitle, action = "") {
+  if (pageLabel) pageLabel.textContent = title;
+  return `<div class="page-heading"><div><h1>${title}</h1><p>${subtitle}</p></div>${action}</div>`;
+}
+function pill(value) {
+  const cls =
+    value.toLowerCase().includes("low") || value === "Unpaid"
+      ? "warn"
+      : value.toLowerCase().includes("expir")
+        ? "danger"
+        : "";
+  return `<span class="pill ${cls}">${value}</span>`;
+}
+async function dashboard() {
+  const appointments = await get("appointments", mock.appointments);
+  const inventory = await get("pharmacy/inventory", mock.inventory);
+  app.innerHTML =
+    page(
+      "Good morning, Alex",
+      "Here is the operational pulse for Thursday, 03 September 2026.",
+      '<a class="primary-btn" href="#patients">+ Register patient</a>',
+    ) +
+    `<div class="kpi-grid"><div class="surface kpi"><span class="kpi-label">Total patients</span><div class="kpi-value">2,481</div><span class="trend">↑ 8.2% this month</span></div><div class="surface kpi"><span class="kpi-label">Appointments today</span><div class="kpi-value">${appointments.length || 24}</div><span class="trend">↑ 4 from yesterday</span></div><div class="surface kpi"><span class="kpi-label">Bed occupancy</span><div class="kpi-value">76%</div><span class="trend neutral">18 beds available</span></div><div class="surface kpi"><span class="kpi-label">Low stock items</span><div class="kpi-value">${inventory.filter((item) => item.alert !== "In stock").length || 7}</div><span class="trend" style="color:var(--orange)">Needs attention</span></div></div><div class="dashboard-grid"><div class="surface panel"><div class="panel-header"><h2>Patient visits</h2><a class="link" href="#reports">View report</a></div><div class="bar-chart">${[54, 72, 60, 92, 66, 82, 48].map((height, index) => `<div class="bar-col"><div class="bar ${index === 3 ? "accent" : ""}" style="height:${height}%"></div><span>${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index]}</span></div>`).join("")}</div></div><div class="surface panel"><div class="panel-header"><h2>Recent activity</h2><a class="link" href="#patients">See all</a></div><div class="activity-item"><span class="activity-dot"></span><div><strong>New patient registered</strong><small>Amara Williams · 12 min ago</small></div></div><div class="activity-item"><span class="activity-dot" style="background:#62b595"></span><div><strong>Prescription dispensed</strong><small>Metformin 850mg · 38 min ago</small></div></div><div class="activity-item"><span class="activity-dot" style="background:#e4a64e"></span><div><strong>Appointment completed</strong><small>Dr. Mokoena · 1 hr ago</small></div></div></div></div><div class="surface panel" style="margin-top:24px"><div class="panel-header"><h2>Today's appointments</h2><a class="link" href="#appointments">Manage schedule</a></div><ul class="appointment-list">${appointments
+      .slice(0, 3)
+      .map(
+        (item) =>
+          `<li class="appointment-row"><div class="avatar">${item.patient
+            .split(" ")
+            .map((word) => word[0])
+            .join(
+              "",
+            )}</div><div><strong>${item.patient}</strong><small class="muted">${item.doctor} · ${item.reason}</small></div><span class="time">${new Date(item.appointmentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>${pill(item.status)}</li>`,
+      )
+      .join("")}</ul></div>`;
+}
+async function patients() {
+  const patients = await get("patients", mock.patients);
+  app.innerHTML =
+    page(
+      "Patients & EHR",
+      "Register patients and keep their clinical records current.",
+      '<button class="primary-btn" id="new-patient">+ New patient</button>',
+    ) +
+    `<div class="tabs"><button class="tab active">All patients</button><button class="tab">Recently viewed</button><button class="tab">Archived</button></div><div class="surface panel"><div class="toolbar"><h2>Patient directory</h2><input class="search" id="patient-search" placeholder="Search patients..." aria-label="Search patients"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Patient</th><th>Record number</th><th>Date of birth</th><th>Contact</th><th>Action</th></tr></thead><tbody id="patient-rows">${patients.map((p) => `<tr><td><strong>${p.name}</strong><span class="muted">${p.email || "No email recorded"}</span></td><td>${p.recordNumber}</td><td>${new Date(p.dateOfBirth).toLocaleDateString()}</td><td>${p.phone}</td><td><button class="secondary-btn">View EHR</button></td></tr>`).join("")}</tbody></table></div></div>`;
+  document.querySelector("#new-patient").onclick = patientForm;
+  document.querySelector("#patient-search").oninput = (event) =>
+    [...document.querySelectorAll("#patient-rows tr")].forEach(
+      (row) =>
+        (row.hidden = !row.textContent
+          .toLowerCase()
+          .includes(event.target.value.toLowerCase())),
+    );
+}
+function patientForm() {
+  app.innerHTML =
+    page(
+      "Register patient",
+      "Create a secure medical record for a new patient.",
+    ) +
+    `<form class="surface panel" id="patient-form"><div class="form-grid"><div class="field"><label for="firstName">First name</label><input id="firstName" name="firstName" required minlength="2"></div><div class="field"><label for="lastName">Last name</label><input id="lastName" name="lastName" required minlength="2"></div><div class="field"><label for="dateOfBirth">Date of birth</label><input id="dateOfBirth" name="dateOfBirth" type="date" required></div><div class="field"><label for="sex">Sex</label><select id="sex" name="sex" required><option value="">Select</option><option>Female</option><option>Male</option><option>Other</option><option>Prefer not to say</option></select></div><div class="field"><label for="phone">Phone number</label><input id="phone" name="phone" type="tel" required></div><div class="field"><label for="email">Email address</label><input id="email" name="email" type="email"></div><div class="field full"><label for="address">Home address</label><input id="address" name="address"></div><div class="field full"><label for="medicalHistory">Medical history</label><textarea id="medicalHistory" name="medicalHistory" placeholder="Allergies, conditions, relevant history..."></textarea></div></div><div class="form-actions"><a class="secondary-btn" href="#patients">Cancel</a><button class="primary-btn">Create patient record</button></div></form>`;
+  document.querySelector("#patient-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target));
+    try {
+      const response = await fetch("/api/patients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error();
+      showToast("Patient record created");
+      location.hash = "patients";
+    } catch {
+      showToast("Demo mode: patient record ready to sync");
+      location.hash = "patients";
+    }
+  };
+}
+async function appointments() {
+  const items = await get("appointments", mock.appointments);
+  app.innerHTML =
+    page(
+      "Appointments",
+      "Coordinate visits, check-ins, and consultation status.",
+      '<button class="primary-btn" onclick="showToast(\'Booking flow ready\')">+ Book appointment</button>',
+    ) +
+    `<div class="surface panel"><div class="toolbar"><h2>Thursday, 03 September</h2><input class="search" placeholder="Search appointments..."></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Time</th><th>Patient</th><th>Clinician</th><th>Reason</th><th>Status</th></tr></thead><tbody>${items.map((item) => `<tr><td><strong>${new Date(item.appointmentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</strong><span class="muted">${item.source}</span></td><td>${item.patient}</td><td>${item.doctor}<span class="muted">${item.specialty}</span></td><td>${item.reason}</td><td>${pill(item.status)}</td></tr>`).join("")}</tbody></table></div></div>`;
+}
+async function pharmacy() {
+  const items = await get("pharmacy/inventory", mock.inventory);
+  app.innerHTML =
+    page(
+      "Pharmacy & inventory",
+      "Track medication levels, expiry dates, and fulfillment.",
+      '<button class="primary-btn" onclick="showToast(\'Medication entry ready\')">+ Add medication</button>',
+    ) +
+    `<div class="kpi-grid"><div class="surface kpi"><span class="kpi-label">Inventory value</span><div class="kpi-value">R 84,290</div></div><div class="surface kpi"><span class="kpi-label">Items in stock</span><div class="kpi-value">${items.length ? items.reduce((sum, item) => sum + item.stock, 0) : 342}</div></div><div class="surface kpi"><span class="kpi-label">Low stock</span><div class="kpi-value">${items.filter((item) => item.alert === "Low stock").length}</div></div><div class="surface kpi"><span class="kpi-label">Expiring in 30 days</span><div class="kpi-value">${items.filter((item) => item.alert === "Expiring soon").length}</div></div></div><div class="surface panel"><div class="panel-header"><h2>Medication inventory</h2><span class="muted">Updated just now</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Medication</th><th>Stock</th><th>Reorder level</th><th>Expiry</th><th>Alert</th></tr></thead><tbody>${items.map((item) => `<tr><td><strong>${item.name}</strong><span class="muted">${item.dosage} · ${money(item.unitPrice)}</span></td><td>${item.stock}</td><td>${item.reorderLevel}</td><td>${new Date(item.expiryDate).toLocaleDateString()}</td><td>${pill(item.alert)}</td></tr>`).join("")}</tbody></table></div></div>`;
+}
+async function billing() {
+  const invoices = await get("billing/invoices", mock.invoices);
+  app.innerHTML =
+    page(
+      "Billing",
+      "Review invoices generated from appointments and prescriptions.",
+      '<button class="primary-btn" onclick="showToast(\'Invoice creation ready\')">+ Create invoice</button>',
+    ) +
+    `<div class="kpi-grid"><div class="surface kpi"><span class="kpi-label">Collected this month</span><div class="kpi-value">R 48,620</div><span class="trend">↑ 12.4%</span></div><div class="surface kpi"><span class="kpi-label">Outstanding</span><div class="kpi-value">R 8,240</div><span class="trend" style="color:var(--orange)">14 invoices</span></div></div><div class="surface panel"><div class="panel-header"><h2>Recent invoices</h2><span class="muted">September 2026</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Invoice</th><th>Patient</th><th>Issued</th><th>Total</th><th>Status</th></tr></thead><tbody>${invoices.map((item) => `<tr><td><strong>${item.id}</strong></td><td>${item.patient}</td><td>${new Date(item.issuedAt).toLocaleDateString()}</td><td><strong>${money(item.total)}</strong></td><td>${pill(item.status)}</td></tr>`).join("")}</tbody></table></div></div>`;
+}
+async function clinical() {
+  const items = await get("appointments", mock.appointments);
+  app.innerHTML =
+    page(
+      "Clinical workflow",
+      "Manage the patient journey from check-in to completed consultation.",
+      '<button class="primary-btn" onclick="showToast(\'Consultation workspace ready\')">+ Start consultation</button>',
+    ) +
+    `<div class="three-column"><div class="surface panel"><div class="panel-header"><h2>Waiting room</h2><span class="pill warn">${items.length} patients</span></div>${items
+      .map(
+        (item) =>
+          `<div class="appointment-row"><div class="avatar">${item.patient
+            .split(" ")
+            .map((word) => word[0])
+            .join(
+              "",
+            )}</div><div><strong>${item.patient}</strong><small class="muted">${item.reason}</small></div></div>`,
+      )
+      .join(
+        "",
+      )}</div><div class="surface panel"><div class="panel-header"><h2>Care team</h2><a class="link" href="#patients">View staff</a></div><div class="status-block"><span class="muted">On duty today</span><strong>12 clinicians</strong></div><div class="metric-line"><span>General medicine</span><strong>4</strong></div><div class="metric-line"><span>Cardiology</span><strong>3</strong></div><div class="metric-line"><span>Pharmacy</span><strong>5</strong></div></div><div class="surface panel"><div class="panel-header"><h2>Bed occupancy</h2><span class="muted">Today</span></div><div class="status-block"><span class="muted">Current occupancy</span><strong>76%</strong><div class="progress-track"><div class="progress-fill" style="width:76%"></div></div></div><div class="metric-line"><span>Occupied beds</span><strong>58 / 76</strong></div><div class="metric-line"><span>Available</span><strong style="color:var(--green)">18 beds</strong></div></div></div><div class="surface panel" style="margin-top:24px"><div class="panel-header"><h2>Recent consultations</h2><span class="muted">Live queue</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Patient</th><th>Clinician</th><th>Diagnosis</th><th>Plan</th><th>Status</th></tr></thead><tbody><tr><td><strong>Amara Williams</strong><span class="muted">CF-24081</span></td><td>Dr. Nandi Mokoena</td><td>Seasonal allergy</td><td>Follow-up in 2 weeks</td><td>${pill("Completed")}</td></tr><tr><td><strong>Liam Petersen</strong><span class="muted">CF-24080</span></td><td>Dr. James Smith</td><td>Pending consultation</td><td>Awaiting assessment</td><td>${pill("Scheduled")}</td></tr></tbody></table></div></div>`;
+}
+async function reports() {
+  app.innerHTML =
+    page(
+      "Reports",
+      "Monitor service performance and operational trends.",
+      '<button class="secondary-btn" onclick="showToast(\'Report export queued\')">Export report</button>',
+    ) +
+    `<div class="kpi-grid"><div class="surface kpi"><span class="kpi-label">Patient satisfaction</span><div class="kpi-value">94%</div><span class="trend">↑ 3.1% this month</span></div><div class="surface kpi"><span class="kpi-label">Average wait time</span><div class="kpi-value">18 min</div><span class="trend">↓ 6 min</span></div><div class="surface kpi"><span class="kpi-label">Completed visits</span><div class="kpi-value">1,284</div><span class="trend">↑ 8.7%</span></div><div class="surface kpi"><span class="kpi-label">Revenue this month</span><div class="kpi-value">R 48.6k</div><span class="trend">↑ 12.4%</span></div></div><div class="surface panel"><div class="panel-header"><h2>Visit volume</h2><select class="search" style="width:auto"><option>Last 7 days</option><option>Last 30 days</option></select></div><div class="chart-bars">${[54, 72, 60, 92, 66, 82, 48].map((height, index) => `<div class="bar-col"><div class="bar ${index === 3 ? "accent" : ""}" style="height:${height}%"></div><span>${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index]}</span></div>`).join("")}</div></div><div class="surface panel" style="margin-top:24px"><div class="panel-header"><h2>Department summary</h2><span class="muted">September 2026</span></div><div class="metric-line"><span>Outpatient services</span><strong>684 visits</strong></div><div class="metric-line"><span>Emergency department</span><strong>326 visits</strong></div><div class="metric-line"><span>Pharmacy fulfillment</span><strong>274 orders</strong></div></div>`;
+}
+function patientPage(title, subtitle) {
+  if (pageLabel) pageLabel.textContent = title;
+  return `<div class="patient-heading"><div><h1>${title}</h1><p>${subtitle}</p></div></div>`;
+}
+function registrationEhr() {
+  app.innerHTML =
+    patientPage(
+      "Patient registration & EHR",
+      "Create a new patient profile and keep their health record up to date.",
+    ) +
+    `<div class="welcome-banner"><div><span class="section-kicker">New patient profile</span><h2>Let’s get the basics on file.</h2><p>Complete the profile below. You can add clinical notes and visit history after registration.</p></div><div class="completion"><strong>1 of 3</strong><span>Profile steps complete</span><div class="progress-track"><div class="progress-fill" style="width:33%"></div></div></div></div><div class="patient-split"><form class="surface panel" id="ehr-form"><div class="panel-header"><div><h2>Personal details</h2><span class="muted">Required fields are marked with an asterisk.</span></div></div><div class="form-grid"><div class="field"><label for="ehr-firstName">First name *</label><input id="ehr-firstName" name="firstName" required></div><div class="field"><label for="ehr-lastName">Last name *</label><input id="ehr-lastName" name="lastName" required></div><div class="field"><label for="ehr-dob">Date of birth *</label><input id="ehr-dob" name="dateOfBirth" type="date" required></div><div class="field"><label for="ehr-sex">Sex *</label><select id="ehr-sex" name="sex" required><option value="">Select sex</option><option>Female</option><option>Male</option><option>Other</option><option>Prefer not to say</option></select></div><div class="field"><label for="ehr-phone">Phone number *</label><input id="ehr-phone" name="phone" type="tel" required></div><div class="field"><label for="ehr-email">Email address</label><input id="ehr-email" name="email" type="email"></div><div class="field full"><label for="ehr-address">Home address</label><input id="ehr-address" name="address"></div><div class="field full"><label for="ehr-history">Medical history</label><textarea id="ehr-history" name="medicalHistory" placeholder="Allergies, existing conditions, relevant history..."></textarea></div></div><div class="form-actions"><button type="button" class="secondary-btn" onclick="showToast('Draft saved locally')">Save draft</button><button class="primary-btn">Create profile</button></div></form><aside class="surface panel profile-preview"><div class="panel-header"><h2>Record preview</h2><span class="pill">Draft</span></div><div class="profile-avatar">+</div><h3 id="preview-name">New patient</h3><p class="muted">The medical record number will be generated after saving.</p><div class="metric-line"><span>Contact details</span><strong id="preview-contact">Not added</strong></div><div class="metric-line"><span>Visit history</span><strong>0 visits</strong></div><div class="metric-line"><span>Prescriptions</span><strong>0 active</strong></div></aside></div>`;
+  document.querySelector("#ehr-form").addEventListener("input", (event) => {
+    const form = new FormData(event.currentTarget);
+    document.querySelector("#preview-name").textContent =
+      `${form.get("firstName") || "New"} ${form.get("lastName") || "patient"}`;
+    document.querySelector("#preview-contact").textContent =
+      form.get("phone") || "Not added";
+  });
+  document.querySelector("#ehr-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.target));
+    try {
+      const response = await fetch("/api/patients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error();
+      showToast("Patient profile created");
+    } catch {
+      showToast("Demo mode: profile ready to sync");
+    }
+  };
+}
+function appointmentBooking() {
+  app.innerHTML =
+    patientPage(
+      "Book an appointment",
+      "Find a time that works for your care.",
+    ) +
+    `<div class="booking-layout"><aside class="surface filter-panel"><div class="panel-header"><h2>Find care</h2><span class="muted">Step 1</span></div><div class="field"><label for="booking-specialty">Specialty</label><select id="booking-specialty"><option>General medicine</option><option>Cardiology</option><option>Dermatology</option><option>Paediatrics</option></select></div><div class="field"><label for="booking-date">Preferred date</label><input id="booking-date" type="date" value="2026-09-03"></div><div class="field"><label for="booking-type">Visit type</label><div class="segmented"><button class="segment active" type="button">In person</button><button class="segment" type="button">Video call</button></div></div><button class="primary-btn wide" id="find-slots">Find availability</button></aside><section class="booking-main"><div class="surface panel"><div class="panel-header"><div><span class="section-kicker">Available clinicians</span><h2>Choose your clinician</h2></div><span class="muted">Thursday, 03 Sep</span></div><div class="clinician selected"><div class="avatar">NM</div><div><strong>Dr. Nandi Mokoena</strong><small class="muted">General medicine · 8 years experience</small></div><span class="pill">Available</span></div><div class="clinician"><div class="avatar">JS</div><div><strong>Dr. James Smith</strong><small class="muted">General medicine · 12 years experience</small></div><span class="muted">Next available tomorrow</span></div></div><div class="surface panel"><div class="panel-header"><div><span class="section-kicker">Available times</span><h2>Select a time</h2></div><span class="muted">30 minute visit</span></div><div class="time-grid">${["08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "13:30", "14:00", "14:30"].map((time, index) => `<button class="time-slot ${index === 1 ? "chosen" : ""}" type="button">${time}</button>`).join("")}</div><div class="form-actions"><button class="primary-btn" id="confirm-booking">Continue to patient details</button></div></div></section><aside class="surface schedule-panel"><div class="panel-header"><h2>Your booking</h2><span class="pill warn">Not confirmed</span></div><div class="booking-summary"><span class="muted">Specialty</span><strong id="summary-specialty">General medicine</strong><span class="muted">Clinician</span><strong>Dr. Nandi Mokoena</strong><span class="muted">Date & time</span><strong id="summary-time">03 Sep 2026 · 09:00</strong></div><button class="secondary-btn wide" id="clear-booking">Clear selection</button></aside></div>`;
+  document.querySelectorAll(".time-slot").forEach(
+    (slot) =>
+      (slot.onclick = () => {
+        document
+          .querySelectorAll(".time-slot")
+          .forEach((item) => item.classList.remove("chosen"));
+        slot.classList.add("chosen");
+        document.querySelector("#summary-time").textContent =
+          `03 Sep 2026 · ${slot.textContent}`;
+      }),
+  );
+  document.querySelector("#confirm-booking").onclick = () =>
+    showToast("Appointment details saved");
+  document.querySelector("#clear-booking").onclick = () =>
+    showToast("Booking selection cleared");
+  document.querySelector("#find-slots").onclick = () =>
+    showToast("Availability refreshed");
+}
+function consultationHistory() {
+  app.innerHTML =
+    patientPage(
+      "Consultation history",
+      "Review visits, clinical notes, diagnoses, and treatment plans.",
+    ) +
+    `<div class="history-layout"><section class="surface panel"><div class="panel-header"><div><span class="section-kicker">Amara Williams · CF-24081</span><h2>Recent consultations</h2></div><button class="secondary-btn" onclick="showToast('Consultation export queued')">Export record</button></div><div class="record-tabs"><button class="record-tab active">All visits</button><button class="record-tab">Prescriptions</button><button class="record-tab">Documents</button></div><article class="consultation-card current"><div class="consultation-date"><strong>03</strong><span>SEP<br>2026</span></div><div class="consultation-detail"><div class="panel-header"><div><h3>Annual health check-up</h3><span class="muted">Dr. Nandi Mokoena · General medicine</span></div>${pill("Completed")}</div><div class="note-grid"><div><span class="label">Diagnosis</span><p>Seasonal allergy symptoms</p></div><div><span class="label">Treatment plan</span><p>Antihistamine once daily. Review in two weeks.</p></div></div><div class="prescription-row"><span class="medication-icon">Rx</span><div><strong>Cetirizine 10mg</strong><small class="muted">1 tablet daily · 14 days</small></div><span class="pill">Sent to pharmacy</span></div></div></article><article class="consultation-card"><div class="consultation-date"><strong>18</strong><span>JUN<br>2026</span></div><div class="consultation-detail"><div class="panel-header"><div><h3>Routine follow-up</h3><span class="muted">Dr. Nandi Mokoena · General medicine</span></div>${pill("Completed")}</div><p class="muted">Vitals stable. Patient advised to continue current treatment plan.</p></div></article></section><aside class="surface panel patient-summary"><div class="profile-avatar">AW</div><h2>Amara Williams</h2><span class="pill">Active patient</span><div class="summary-list"><div><span class="muted">Date of birth</span><strong>12 April 1989</strong></div><div><span class="muted">Phone</span><strong>+27 82 431 2288</strong></div><div><span class="muted">Known allergies</span><strong>Penicillin</strong></div><div><span class="muted">Last visit</span><strong>03 September 2026</strong></div></div><button class="primary-btn wide" onclick="showToast('Edit patient profile opened')">Edit patient profile</button></aside></div>`;
+}
+function billingNotifications() {
+  app.innerHTML =
+    patientPage(
+      "Billing & notifications",
+      "Keep track of payments, prescriptions, and important patient updates.",
+    ) +
+    `<div class="billing-layout"><section class="finance-main"><div class="alert-banner"><span class="alert-icon">!</span><div><strong>Payment action required</strong><p>You have 1 outstanding invoice for your recent appointment.</p></div><button class="secondary-btn" onclick="showToast('Payment flow opened')">Pay now</button></div><div class="surface panel"><div class="panel-header"><div><span class="section-kicker">Account activity</span><h2>Invoices</h2></div><button class="secondary-btn" onclick="showToast('Invoice download started')">Download all</button></div><div class="invoice-row"><div class="invoice-icon">R</div><div><strong>INV-1048 · Annual health check-up</strong><small class="muted">Issued 03 September 2026</small></div><strong class="invoice-total">R 145.50</strong>${pill("Paid")}<button class="text-btn">View</button></div><div class="invoice-row"><div class="invoice-icon pending">R</div><div><strong>INV-1047 · Specialist consultation</strong><small class="muted">Issued 01 September 2026</small></div><strong class="invoice-total">R 320.00</strong>${pill("Unpaid")}<button class="text-btn">View</button></div></div></section><aside class="surface panel pharmacy-notifications"><div class="panel-header"><h2>Notifications</h2><span class="pill warn">2 new</span></div><div class="notification-item unread"><span class="notification-dot"></span><div><strong>Prescription ready</strong><p>Your Cetirizine prescription is ready for collection at CareFlow Pharmacy.</p><small class="muted">10 minutes ago</small></div></div><div class="notification-item unread"><span class="notification-dot" style="background:var(--purple)"></span><div><strong>Appointment reminder</strong><p>Your follow-up with Dr. Mokoena is scheduled for 17 September.</p><small class="muted">1 hour ago</small></div></div><div class="notification-item"><span class="notification-dot" style="background:#b9b6c9"></span><div><strong>Profile updated</strong><p>Your contact details were updated successfully.</p><small class="muted">Yesterday</small></div></div><button class="secondary-btn wide" onclick="document.querySelectorAll('.notification-item').forEach(item => item.classList.remove('unread')); showToast('All notifications marked read')">Mark all as read</button></aside></div>`;
+}
+const views = {
+  dashboard,
+  patients,
+  appointments,
+  pharmacy,
+  billing,
+  clinical,
+  reports,
+  "registration-ehr-profile": registrationEhr,
+  "appointment-booking": appointmentBooking,
+  "consultation-history": consultationHistory,
+  "billing-notifications": billingNotifications,
+};
+function route() {
+  const name =
+    location.hash.slice(1) || document.body.dataset.page || "dashboard";
+  const view = views[name] || dashboard;
+  document
+    .querySelectorAll(".nav-link")
+    .forEach((link) =>
+      link.classList.toggle("active", link.dataset.view === name),
+    );
+  view();
+}
+window.addEventListener("hashchange", route);
+route();

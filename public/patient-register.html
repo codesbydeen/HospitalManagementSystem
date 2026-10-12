@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Create a secure CareFlow patient portal account."
+    />
+    <title>CareFlow | Create your account</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/portal.css" />
+  </head>
+  <body data-portal-form="register">
+    <header class="public-header">
+      <a class="brand" href="registration-ehr-profile.html"
+        ><span class="brand-mark">+</span><span>CareFlow</span></a
+      >
+      <nav class="public-nav">
+        <a class="public-link" href="registration-ehr-profile.html">Home</a
+        ><a class="public-link" href="appointment-booking.html">Appointments</a>
+      </nav>
+      <div class="top-actions">
+        <a class="public-link" href="patient-login.html">Login</a>
+      </div>
+    </header>
+    <main class="content-body portal-content">
+      <div class="page-heading">
+        <div>
+          <h1>Create your patient account</h1>
+          <p>Set up secure access to your CareFlow patient portal.</p>
+        </div>
+      </div>
+      <form class="surface panel portal-form" id="register-form" novalidate>
+        <div class="form-grid">
+          <div class="field">
+            <label for="first-name">First name</label
+            ><input
+              id="first-name"
+              name="firstName"
+              autocomplete="given-name"
+              required
+              minlength="2"
+              maxlength="80"
+            />
+          </div>
+          <div class="field">
+            <label for="last-name">Last name</label
+            ><input
+              id="last-name"
+              name="lastName"
+              autocomplete="family-name"
+              required
+              minlength="2"
+              maxlength="80"
+            />
+          </div>
+          <div class="field">
+            <label for="email">Email address</label
+            ><input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+              maxlength="160"
+            />
+          </div>
+          <div class="field">
+            <label for="phone">Phone number</label
+            ><input
+              id="phone"
+              name="phone"
+              type="tel"
+              autocomplete="tel"
+              required
+              minlength="7"
+              maxlength="30"
+            />
+          </div>
+          <div class="field">
+            <label for="dob">Date of birth</label
+            ><input
+              id="dob"
+              name="dob"
+              type="date"
+              autocomplete="bday"
+              required
+            />
+          </div>
+          <div class="field">
+            <label for="sex">Sex</label
+            ><select id="sex" name="sex">
+              <option>Prefer not to say</option>
+              <option>Female</option>
+              <option>Male</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label for="password">Password</label
+            ><input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="new-password"
+              required
+              minlength="8"
+              maxlength="72"
+            />
+          </div>
+        </div>
+        <p
+          class="portal-feedback"
+          id="form-feedback"
+          role="status"
+          aria-live="polite"
+        ></p>
+        <div class="form-actions">
+          <button class="primary-btn" type="submit">Create account</button>
+        </div>
+        <p class="portal-switch">
+          Already registered?
+          <a class="link" href="patient-login.html">Log in</a>
+        </p>
+      </form>
+    </main>
+    <script src="js/portal-forms.js"></script>
+  </body>
+</html>

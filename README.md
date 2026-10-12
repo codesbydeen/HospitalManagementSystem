@@ -4,21 +4,28 @@ CareFlow is a vanilla JavaScript SPA with an Express/MySQL API for patient regis
 
 ## Run locally
 
-1. Copy `.env.example` to `.env` and set the MySQL credentials.
-2. Create the database with `mysql -u root -p < schema.sql`.
-3. Install dependencies with `npm install`.
+1. Install the backend dependencies with `npm install` (Express, CORS, dotenv, mysql2, bcryptjs, Helmet, express-rate-limit, and express-validator).
+2. Copy `.env.example` to `.env` and set `DB_HOST`, `DB_USER`, `DB_PASSWORD`, and `DB_NAME=careflow_db` for your MySQL connection. Set `PORT` if 3000 is unavailable.
+3. In VS Code Database Client, connect to MySQL and execute `schema.sql`. This creates the fresh `careflow_db` database and its tables. Back up existing data before running schema changes against a database you already use.
 4. Start the app with `npm start`, then open `http://localhost:3000`.
 
-The UI includes realistic demo data when MySQL is unavailable, so the flows can be reviewed before database setup. API writes and reads use parameterized queries. Production deployment should add authentication/authorization, encrypted transport, audit logging, backups, and a secrets manager before handling real patient data.
+The admin UI has demo fallbacks for read requests when MySQL is unavailable; patient registration, login, portal, and appointment requests require the database. API writes use parameterized queries. Patient passwords are bcrypt-hashed and login sessions use an opaque, hashed server-side token in an HttpOnly cookie. The existing staff/admin APIs do not yet have staff authentication or role-based authorization, so do not expose this app to the public internet or use it with real patient data until those controls, HTTPS, audit logging, backups, and secrets management are in place.
 
 ## API surface
 
-- `GET|POST /api/patients`
+- `POST /api/register` with `firstName`, `lastName`, `email`, `password`, `phone`, `dob`, and optional `sex` creates a patient account and starts a session.
+- `POST /api/login` with `email` and `password` starts a session; `POST /api/logout` ends it.
+- `GET /api/session` returns the current signed-in patient summary.
+- `GET /api/patients` and `POST /api/patients` are the staff-facing patient directory and EHR registration endpoints.
+- `GET /api/patients/:id` returns the signed-in patient's profile and appointments; patients cannot read another patient's profile.
+- `POST /api/appointments` with `department`, `preferredDate`, `reason`, and optional `preferredTime` creates a Pending appointment for the signed-in patient.
 - `GET /api/doctors`
 - `GET /api/appointments`, `PATCH /api/appointments/:id/status`
 - `GET /api/pharmacy/inventory`
 - `GET /api/billing/invoices`
 - `GET /api/health`
+
+The patient forms live at `public/patient-register.html` and `public/patient-login.html`; the appointment page submits to the API and the patient portal reads its authenticated profile and appointment history.
 
 The UI tokens mirror the supplied Figma file: 260px navigation, 80px header, `#16162A` navigation, `#F8F7FC` workspace, `#E9D7FF` borders, and a purple action accent.
 
@@ -26,7 +33,8 @@ The UI tokens mirror the supplied Figma file: 260px navigation, 80px header, `#1
 
 The patient-facing screens use the light CareFlow header from the supplied Figma designs and can be opened directly:
 
-- `public/registration-ehr-profile.html` - registration form, progress state, and EHR preview
+- `public/registration-ehr-profile.html` - patient-facing hospital homepage
+- `public/patient-register.html` and `public/patient-login.html` - patient portal account flows
 - `public/appointment-booking.html` - specialty filters, clinician selection, and time slots
 - `public/consultation-history.html` - consultation timeline, prescriptions, and patient summary
 - `public/billing-notifications.html` - invoice status, payment alert, and notifications

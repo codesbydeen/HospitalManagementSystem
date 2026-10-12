@@ -1,81 +1,198 @@
 <!doctype html>
 <html lang="en">
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="description" content="CareFlow Community Hospital: compassionate care, trusted specialists, and simple access to your health services.">
-	<title>CareFlow Community Hospital | Here for your health</title>
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-	<link rel="stylesheet" href="style.css">
-	<link rel="stylesheet" href="home.css">
-</head>
-<body class="hospital-home">
-	<header class="public-header home-header">
-		<a class="brand" href="registration-ehr-profile.html" aria-label="CareFlow Community Hospital home"><span class="brand-mark">+</span><span>CareFlow</span></a>
-		<nav class="public-nav" aria-label="Main navigation">
-			<a class="public-link" href="#our-care">Our care</a>
-			<a class="public-link" href="#services">Services</a>
-			<a class="public-link" href="#patient-access">Patient access</a>
-		</nav>
-		<div class="home-actions">
-			<a class="home-login" href="consultation-history.html">Login</a>
-			<a class="primary-btn home-register" href="appointment-booking.html">Register</a>
-		</div>
-	</header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="CareFlow Community Hospital: compassionate care, trusted specialists, and simple access to your health services."
+    />
+    <title>CareFlow Community Hospital | Here for your health</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/home.css" />
+  </head>
+  <body class="hospital-home">
+    <header class="public-header home-header">
+      <a
+        class="brand"
+        href="registration-ehr-profile.html"
+        aria-label="CareFlow Community Hospital home"
+        ><span class="brand-mark">+</span><span>CareFlow</span></a
+      >
+      <nav class="public-nav" aria-label="Main navigation">
+        <a class="public-link" href="#our-care">Our care</a>
+        <a class="public-link" href="#services">Services</a>
+        <a class="public-link" href="#patient-access">Patient access</a>
+      </nav>
+      <div class="home-actions">
+        <a class="home-login" href="patient-login.html">Login</a>
+        <a class="primary-btn home-register" href="patient-register.html"
+          >Register</a
+        >
+      </div>
+    </header>
 
-	<main>
-		<div class="emergency-strip" id="emergency-contacts">
-			<span class="emergency-symbol" aria-hidden="true">!</span>
-			<p><strong>Medical emergency?</strong> Call <a href="tel:10177">10177</a> for an ambulance, or <a href="tel:112">112</a> from a mobile phone.</p>
-			<span class="emergency-note">For emergencies, do not use online booking.</span>
-		</div>
+    <main>
+      <div class="emergency-strip" id="emergency-contacts">
+        <span class="emergency-symbol" aria-hidden="true">!</span>
+        <p>
+          <strong>Medical emergency?</strong> Call
+          <a href="tel:10177">10177</a> for an ambulance, or
+          <a href="tel:112">112</a> from a mobile phone.
+        </p>
+        <span class="emergency-note"
+          >For emergencies, do not use online booking.</span
+        >
+      </div>
 
-		<section class="home-hero" aria-labelledby="hero-title">
-			<div class="hero-copy">
-				<p class="home-eyebrow">CareFlow Community Hospital</p>
-				<h1 id="hero-title">Here for your health. Here for you.</h1>
-				<p class="hero-intro">From everyday check-ups to expert specialist care, our people are here to help you and your family feel better, every step of the way.</p>
-				<div class="hero-actions">
-					<a class="primary-btn" href="appointment-booking.html">Book an appointment <span aria-hidden="true">→</span></a>
-					<a class="hero-text-link" href="#our-care">Discover our care <span aria-hidden="true">↓</span></a>
-				</div>
-				<div class="hero-promise"><span class="promise-mark" aria-hidden="true">+</span><span><strong>Care built around you</strong><small>Compassionate teams. Clear answers. Better health.</small></span></div>
-			</div>
-			<div class="hero-image-wrap">
-				<img class="hero-image" src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1300&q=85" alt="A clinician using a smartphone during a care visit">
-				<div class="image-caption"><span class="caption-dot"></span><span><strong>Care, close to home</strong><small>Here for every chapter of your health</small></span></div>
-			</div>
-		</section>
+      <section class="home-hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="home-eyebrow">CareFlow Community Hospital</p>
+          <h1 id="hero-title">Here for your health. Here for you.</h1>
+          <p class="hero-intro">
+            From everyday check-ups to expert specialist care, our people are
+            here to help you and your family feel better, every step of the way.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="appointment-booking.html"
+              >Book an appointment <span aria-hidden="true">→</span></a
+            >
+            <a class="hero-text-link" href="#our-care"
+              >Discover our care <span aria-hidden="true">↓</span></a
+            >
+          </div>
+          <div class="hero-promise">
+            <span class="promise-mark" aria-hidden="true">+</span
+            ><span
+              ><strong>Care built around you</strong
+              ><small
+                >Compassionate teams. Clear answers. Better health.</small
+              ></span
+            >
+          </div>
+        </div>
+        <div class="hero-image-wrap">
+          <img
+            class="hero-image"
+            src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1300&q=85"
+            alt="A clinician using a smartphone during a care visit"
+          />
+          <div class="image-caption">
+            <span class="caption-dot"></span
+            ><span
+              ><strong>Care, close to home</strong
+              ><small>Here for every chapter of your health</small></span
+            >
+          </div>
+        </div>
+      </section>
 
-		<section class="care-overview" id="our-care" aria-labelledby="care-title">
-			<div class="section-heading">
-				<div><p class="home-eyebrow">A healthier community starts here</p><h2 id="care-title">Your health is our priority</h2></div>
-				<p>Good care begins with listening. We bring skilled teams and connected services together to make your care personal, coordinated, and easier to access.</p>
-			</div>
-			<div class="service-grid" id="services">
-				<article class="service-item"><span class="service-icon service-lilac" aria-hidden="true">♡</span><h3>Primary care</h3><p>Check-ups, family medicine, and support for your everyday health.</p></article>
-				<article class="service-item"><span class="service-icon service-green" aria-hidden="true">✚</span><h3>Specialist clinics</h3><p>Experienced teams across heart health, women's health, and more.</p></article>
-				<article class="service-item"><span class="service-icon service-peach" aria-hidden="true">⌁</span><h3>Pharmacy</h3><p>Convenient prescription support and guidance from our pharmacy team.</p></article>
-				<article class="service-item"><span class="service-icon service-blue" aria-hidden="true">◷</span><h3>Urgent & emergency care</h3><p>Help when you need it most, with emergency teams ready around the clock.</p></article>
-			</div>
-		</section>
+      <section class="care-overview" id="our-care" aria-labelledby="care-title">
+        <div class="section-heading">
+          <div>
+            <p class="home-eyebrow">A healthier community starts here</p>
+            <h2 id="care-title">Your health is our priority</h2>
+          </div>
+          <p>
+            Good care begins with listening. We bring skilled teams and
+            connected services together to make your care personal, coordinated,
+            and easier to access.
+          </p>
+        </div>
+        <div class="service-grid" id="services">
+          <article class="service-item">
+            <span class="service-icon service-lilac" aria-hidden="true">♡</span>
+            <h3>Primary care</h3>
+            <p>
+              Check-ups, family medicine, and support for your everyday health.
+            </p>
+          </article>
+          <article class="service-item">
+            <span class="service-icon service-green" aria-hidden="true">✚</span>
+            <h3>Specialist clinics</h3>
+            <p>
+              Experienced teams across heart health, women's health, and more.
+            </p>
+          </article>
+          <article class="service-item">
+            <span class="service-icon service-peach" aria-hidden="true">⌁</span>
+            <h3>Pharmacy</h3>
+            <p>
+              Convenient prescription support and guidance from our pharmacy
+              team.
+            </p>
+          </article>
+          <article class="service-item">
+            <span class="service-icon service-blue" aria-hidden="true">◷</span>
+            <h3>Urgent & emergency care</h3>
+            <p>
+              Help when you need it most, with emergency teams ready around the
+              clock.
+            </p>
+          </article>
+        </div>
+      </section>
 
-		<section class="patient-access" id="patient-access" aria-labelledby="access-title">
-			<div class="section-heading access-heading">
-				<div><p class="home-eyebrow">Your care, made simpler</p><h2 id="access-title">How can we help today?</h2></div>
-				<a class="all-services-link" href="appointment-booking.html">Explore all services <span aria-hidden="true">→</span></a>
-			</div>
-			<div class="access-grid">
-				<a class="access-link" href="appointment-booking.html"><span class="access-icon" aria-hidden="true">⌕</span><span class="access-copy"><strong>Find a doctor</strong><small>Meet our care team and specialists</small></span><span class="access-arrow" aria-hidden="true">↗</span></a>
-				<a class="access-link" href="appointment-booking.html"><span class="access-icon" aria-hidden="true">▣</span><span class="access-copy"><strong>Book an appointment</strong><small>Choose a time that works for you</small></span><span class="access-arrow" aria-hidden="true">↗</span></a>
-				<a class="access-link" href="consultation-history.html"><span class="access-icon" aria-hidden="true">♙</span><span class="access-copy"><strong>Patient portal</strong><small>View your health record and visits</small></span><span class="access-arrow" aria-hidden="true">↗</span></a>
-				<a class="access-link" href="#emergency-contacts"><span class="access-icon access-emergency" aria-hidden="true">!</span><span class="access-copy"><strong>Emergency contacts</strong><small>Important numbers and urgent help</small></span><span class="access-arrow" aria-hidden="true">↗</span></a>
-			</div>
-		</section>
-	</main>
+      <section
+        class="patient-access"
+        id="patient-access"
+        aria-labelledby="access-title"
+      >
+        <div class="section-heading access-heading">
+          <div>
+            <p class="home-eyebrow">Your care, made simpler</p>
+            <h2 id="access-title">How can we help today?</h2>
+          </div>
+          <a class="all-services-link" href="appointment-booking.html"
+            >Explore all services <span aria-hidden="true">→</span></a
+          >
+        </div>
+        <div class="access-grid">
+          <a class="access-link" href="appointment-booking.html"
+            ><span class="access-icon" aria-hidden="true">⌕</span
+            ><span class="access-copy"
+              ><strong>Find a doctor</strong
+              ><small>Meet our care team and specialists</small></span
+            ><span class="access-arrow" aria-hidden="true">↗</span></a
+          >
+          <a class="access-link" href="appointment-booking.html"
+            ><span class="access-icon" aria-hidden="true">▣</span
+            ><span class="access-copy"
+              ><strong>Book an appointment</strong
+              ><small>Choose a time that works for you</small></span
+            ><span class="access-arrow" aria-hidden="true">↗</span></a
+          >
+          <a class="access-link" href="consultation-history.html"
+            ><span class="access-icon" aria-hidden="true">♙</span
+            ><span class="access-copy"
+              ><strong>Patient portal</strong
+              ><small>View your health record and visits</small></span
+            ><span class="access-arrow" aria-hidden="true">↗</span></a
+          >
+          <a class="access-link" href="#emergency-contacts"
+            ><span class="access-icon access-emergency" aria-hidden="true"
+              >!</span
+            ><span class="access-copy"
+              ><strong>Emergency contacts</strong
+              ><small>Important numbers and urgent help</small></span
+            ><span class="access-arrow" aria-hidden="true">↗</span></a
+          >
+        </div>
+      </section>
+    </main>
 
-	<footer class="home-footer"><a class="brand" href="registration-ehr-profile.html"><span class="brand-mark">+</span><span>CareFlow</span></a><p>Compassionate care for every stage of life.</p><a href="#emergency-contacts">Emergency contacts</a></footer>
-</body>
+    <footer class="home-footer">
+      <a class="brand" href="registration-ehr-profile.html"
+        ><span class="brand-mark">+</span><span>CareFlow</span></a
+      >
+      <p>Compassionate care for every stage of life.</p>
+      <a href="#emergency-contacts">Emergency contacts</a>
+    </footer>
+  </body>
 </html>

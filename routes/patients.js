@@ -14,9 +14,9 @@ const patientRules = [
 
 router.get('/', async (_req, res, next) => {
   try {
-    const [rows] = await pool.query(`SELECT patient_id AS id, medical_record_number AS recordNumber,
-      CONCAT(first_name, ' ', last_name) AS name, date_of_birth AS dateOfBirth, phone, email,
-      created_at AS createdAt FROM Patients ORDER BY created_at DESC LIMIT 100`);
+    const [rows] = await pool.query(`SELECT id, medical_record_number AS recordNumber,
+      CONCAT(first_name, ' ', last_name) AS name, dob AS dateOfBirth, phone, email,
+      created_at AS createdAt FROM patients ORDER BY created_at DESC LIMIT 100`);
     res.json(rows);
   } catch (error) { next(error); }
 });
@@ -26,12 +26,27 @@ router.post('/', patientRules, async (req, res, next) => {
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   try {
     const recordNumber = `CF-${Date.now().toString(36).toUpperCase()}`;
-    const [result] = await pool.execute(`INSERT INTO Patients
-      (medical_record_number, first_name, last_name, date_of_birth, sex, phone, email, address, medical_history)
+    const [result] = await pool.execute(`INSERT INTO patients
+      (medical_record_number, first_name, last_name, dob, sex, phone, email, address, medical_history)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [recordNumber, req.body.firstName, req.body.lastName,
       req.body.dateOfBirth, req.body.sex, req.body.phone, req.body.email || null,
       req.body.address || null, req.body.medicalHistory || null]);
     res.status(201).json({ id: result.insertId, recordNumber });
+  } catch (error) { next(error); }
+});
+
+router.get('/:id', require('../middleware/patient-session').requirePatient, async (req, res, next) => {
+  const patientId = Number(req.params.id);
+  if (!Number.isSafeInteger(patientId) || patientId < 1) return res.status(400).json({ error: 'Invalid patient ID' });
+  if (req.patient.id !== patientId) return res.status(403).json({ error: 'You can only view your own patient profile' });
+  try {
+    const [patientRows] = await pool.execute(`SELECT id, medical_record_number AS recordNumber,
+      first_name AS firstName, last_name AS lastName, email, phone, dob, sex, address,
+      created_at AS createdAt FROM patients WHERE id = ? LIMIT 1`, [patientId]);
+    const [appointments] = await pool.execute(`SELECT a.id, a.department, a.preferred_date AS preferredDate,
+      a.appointment_at AS appointmentAt, a.reason, a.status, a.created_at AS createdAt
+      FROM appointments a WHERE a.patient_id = ? ORDER BY a.preferred_date DESC, a.id DESC`, [patientId]);
+    res.json({ patient: patientRows[0], appointments });
   } catch (error) { next(error); }
 });
 

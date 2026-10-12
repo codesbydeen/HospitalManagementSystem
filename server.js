@@ -12,6 +12,7 @@ app.use(express.json({ limit: '100kb' }));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 300 }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use('/api', require('./routes/auth'));
 app.use('/api/patients', require('./routes/patients'));
 app.use('/api/doctors', require('./routes/doctors'));
 app.use('/api/appointments', require('./routes/appointments'));
