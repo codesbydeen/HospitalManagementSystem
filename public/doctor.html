@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content="Doctor portal for patients assigned to your care" />
+    <title>CareFlow | Doctor Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div>
+          <a class="brand" href="doctor.html"><span class="brand-mark">+</span><span>CareFlow</span></a>
+          <p class="eyebrow">Doctor portal</p>
+        </div>
+        <div class="user-card">
+          <div class="avatar" id="doctor-initials">--</div>
+          <div><strong id="doctor-name">Loading account…</strong><small>Doctor</small></div>
+          <button class="secondary-btn" id="doctor-logout" type="button">Log out</button>
+        </div>
+      </aside>
+      <main class="main-content">
+        <header class="topbar">
+          <div><span class="breadcrumb">Doctor portal / </span><strong>My patients</strong></div>
+        </header>
+        <section id="doctor-app" class="content-body" aria-live="polite"></section>
+      </main>
+    </div>
+    <script src="js/doctor-app.js"></script>
+  </body>
+</html>

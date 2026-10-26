@@ -27,10 +27,13 @@
           <nav aria-label="Primary navigation">
             <a class="nav-link" href="admin.html" data-view="dashboard"
               ><span>▦</span> Dashboard</a
+            ><a class="nav-link" href="appointments.html" data-view="appointments"
+              ><span>◷</span> Appointments</a
+            >
+            <a class="nav-link" href="clinical.html" data-view="clinical"
+              ><span>◷</span> Clinical workflow</a
             ><a class="nav-link" href="patients.html" data-view="patients"
               ><span>♙</span> Patients & staff</a
-            ><a class="nav-link" href="clinical.html" data-view="clinical"
-              ><span>◷</span> Clinical workflow</a
             ><a
               class="nav-link active"
               href="pharmacy.html"
@@ -54,6 +57,7 @@
             ><strong id="page-label">Pharmacy & billing</strong>
           </div>
           <div class="top-actions">
+            <button class="secondary-btn" id="admin-logout" type="button">Log out</button>
             <button class="icon-btn" aria-label="Notifications">
               ♧<i></i>
             </button>
@@ -64,6 +68,7 @@
       </main>
     </div>
     <div id="toast" class="toast" role="status"></div>
+    <script src="js/password-toggle.js"></script>
     <script src="js/admin-app.js"></script>
   </body>
 </html>

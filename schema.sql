@@ -33,6 +33,14 @@ CREATE TABLE IF NOT EXISTS doctors (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS doctor_accounts (
+  doctor_id INT UNSIGNED PRIMARY KEY,
+  email VARCHAR(160) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS appointments (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   patient_id INT UNSIGNED NOT NULL,
@@ -57,6 +65,15 @@ CREATE TABLE IF NOT EXISTS patient_sessions (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
   INDEX idx_patient_sessions_expiry (expires_at)
+);
+
+CREATE TABLE IF NOT EXISTS doctor_sessions (
+  token_hash CHAR(64) PRIMARY KEY,
+  doctor_id INT UNSIGNED NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id) ON DELETE CASCADE,
+  INDEX idx_doctor_sessions_expiry (expires_at)
 );
 
 CREATE TABLE IF NOT EXISTS consultations (

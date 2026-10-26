@@ -31,6 +31,8 @@
               href="appointments.html"
               data-view="appointments"
               ><span>◷</span> Appointments</a
+            ><a class="nav-link" href="clinical.html" data-view="clinical"
+              ><span>◷</span> Clinical workflow</a
             ><a class="nav-link" href="pharmacy.html" data-view="pharmacy"
               ><span>⌁</span> Pharmacy & billing</a
             ><a class="nav-link" href="reports.html" data-view="reports"
@@ -51,6 +53,7 @@
             ><strong id="page-label">Appointments</strong>
           </div>
           <div class="top-actions">
+            <button class="secondary-btn" id="admin-logout" type="button">Log out</button>
             <button class="icon-btn" aria-label="Notifications">
               ♧<i></i>
             </button>
@@ -61,6 +64,7 @@
       </main>
     </div>
     <div id="toast" class="toast" role="status"></div>
+    <script src="js/password-toggle.js"></script>
     <script src="js/admin-app.js"></script>
   </body>
 </html>

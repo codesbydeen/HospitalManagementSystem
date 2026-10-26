@@ -2,7 +2,14 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const pool = require('../db');
-const { clearSessionCookie, createSession, hashToken, requireAuthenticated, sessionToken } = require('../middleware/patient-session');
+const {
+  clearSessionCookie,
+  createDoctorSession,
+  createSession,
+  hashToken,
+  requireAuthenticated,
+  sessionToken
+} = require('../middleware/patient-session');
 
 const router = express.Router();
 const registrationRules = [
@@ -40,14 +47,24 @@ router.post('/login', [body('email').trim().isEmail().normalizeEmail(), body('pa
       password_hash AS passwordHash, role
       FROM patients WHERE email = ? LIMIT 1`, [req.body.email]);
     const patient = rows[0];
-    if (!patient?.passwordHash || !await bcrypt.compare(req.body.password, patient.passwordHash)) {
+    if (patient?.passwordHash && await bcrypt.compare(req.body.password, patient.passwordHash)) {
+      if (!['patient', 'admin'].includes(patient.role)) {
+        return res.status(403).json({ error: 'Your account role is missing or invalid. Contact an administrator.' });
+      }
+      await createSession(patient.id, res);
+      return res.json({ success: true, session: { id: patient.id, firstName: patient.firstName, lastName: patient.lastName, role: patient.role } });
+    }
+
+    const [doctorRows] = await pool.execute(`SELECT d.doctor_id AS id, d.first_name AS firstName,
+      d.last_name AS lastName, a.password_hash AS passwordHash
+      FROM doctor_accounts a JOIN doctors d ON d.doctor_id = a.doctor_id
+      WHERE a.email = ? AND d.is_active = TRUE LIMIT 1`, [req.body.email]);
+    const doctor = doctorRows[0];
+    if (!doctor?.passwordHash || !await bcrypt.compare(req.body.password, doctor.passwordHash)) {
       return res.status(401).json({ error: 'Email or password is incorrect' });
     }
-    if (!['patient', 'admin'].includes(patient.role)) {
-      return res.status(403).json({ error: 'Your account role is missing or invalid. Contact an administrator.' });
-    }
-    await createSession(patient.id, res);
-    return res.json({ success: true, session: { id: patient.id, firstName: patient.firstName, lastName: patient.lastName, role: patient.role } });
+    await createDoctorSession(doctor.id, res);
+    return res.json({ success: true, session: { id: doctor.id, firstName: doctor.firstName, lastName: doctor.lastName, role: 'doctor' } });
   } catch (error) {
     return next(error);
   }
@@ -57,6 +74,7 @@ router.post('/logout', requireAuthenticated, async (req, res, next) => {
   const token = sessionToken(req);
   try {
     await pool.execute('DELETE FROM patient_sessions WHERE token_hash = ?', [hashToken(token)]);
+    await pool.execute('DELETE FROM doctor_sessions WHERE token_hash = ?', [hashToken(token)]);
     clearSessionCookie(res);
     return res.json({ success: true });
   } catch (error) {
@@ -65,7 +83,7 @@ router.post('/logout', requireAuthenticated, async (req, res, next) => {
 });
 
 router.get('/session', requireAuthenticated, (req, res) => {
-  const { id, firstName, lastName, role } = req.patient;
+  const { id, firstName, lastName, role } = req.auth;
   res.json({ success: true, session: { id, firstName, lastName, role } });
 });
 

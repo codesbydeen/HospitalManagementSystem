@@ -239,6 +239,10 @@ async function loadPatientPortal() {
       location.assign("admin.html");
       return;
     }
+    if (session.role === "doctor") {
+      location.assign("doctor.html");
+      return;
+    }
     if (session.role !== "patient")
       throw new Error("Your account role is missing or invalid. Contact an administrator.");
     const dataPage = document.body.dataset.page;

@@ -14,6 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/api', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/doctor', require('./routes/doctor'));
 app.use('/api/patients', require('./routes/patients'));
 app.use('/api/doctors', require('./routes/doctors'));
 app.use('/api/appointments', require('./routes/appointments'));

@@ -151,7 +151,14 @@ async function patients() {
       }
       try {
         const doctors = await api("doctors/directory");
-        directory.innerHTML = `<div class="toolbar"><h2>Doctor directory</h2><input class="search" id="directory-search" placeholder="Search doctors..." aria-label="Search doctors"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Doctor</th><th>Specialty</th><th>License</th><th>Contact</th><th>Status</th></tr></thead><tbody>${doctors.map((doctor) => `<tr><td>${escapeHtml(doctor.name)}</td><td>${escapeHtml(doctor.specialty)}</td><td>${escapeHtml(doctor.licenseNumber)}</td><td>${escapeHtml([doctor.email, doctor.phone].filter(Boolean).join(" · ") || "No contact recorded")}</td><td>${pill(doctor.isActive ? "Active" : "Inactive")}</td></tr>`).join("")}</tbody></table></div>${doctors.length ? "" : '<p class="muted">No doctors have been added yet.</p>'}`;
+        directory.innerHTML = `<div class="toolbar"><h2>Doctor directory</h2><input class="search" id="directory-search" placeholder="Search doctors..." aria-label="Search doctors"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Doctor</th><th>Specialty</th><th>License</th><th>Contact</th><th>Status</th><th>Portal access</th></tr></thead><tbody>${doctors.map((doctor) => `<tr><td>${escapeHtml(doctor.name)}</td><td>${escapeHtml(doctor.specialty)}</td><td>${escapeHtml(doctor.licenseNumber)}</td><td>${escapeHtml([doctor.email, doctor.phone].filter(Boolean).join(" · ") || "No contact recorded")}</td><td>${pill(doctor.isActive ? "Active" : "Inactive")}</td><td>${doctor.hasAccount ? '<span class="muted">Doctor login ready</span>' : `<button class="secondary-btn create-doctor-login" data-id="${Number(doctor.id)}" data-name="${escapeHtml(doctor.name)}" data-email="${escapeHtml(doctor.email || "")}">Set up login</button>`}</td></tr>`).join("")}</tbody></table></div>${doctors.length ? "" : '<p class="muted">No doctors have been added yet.</p>'}`;
+        directory.querySelectorAll(".create-doctor-login").forEach((button) => {
+          button.onclick = () => doctorAccountForm({
+            id: Number(button.dataset.id),
+            name: button.dataset.name,
+            email: button.dataset.email,
+          });
+        });
         document.querySelector("#directory-search").addEventListener("input", (event) => {
           const query = event.target.value.toLowerCase();
           directory.querySelectorAll("tbody tr").forEach((row) => {
@@ -202,14 +209,15 @@ function patientForm() {
 
 function doctorForm() {
   app.innerHTML =
-    page("Add doctor", "Add a clinician to the CareFlow directory.") +
+    page("Add doctor", "Add a clinician and create their restricted doctor-portal login.") +
     `<form class="surface panel" id="doctor-form"><div class="form-grid">
       <div class="field"><label for="doctor-firstName">First name</label><input id="doctor-firstName" name="firstName" required minlength="2" maxlength="80"></div>
       <div class="field"><label for="doctor-lastName">Last name</label><input id="doctor-lastName" name="lastName" required minlength="2" maxlength="80"></div>
       <div class="field"><label for="doctor-specialty">Specialty</label><input id="doctor-specialty" name="specialty" required minlength="2" maxlength="120"></div>
       <div class="field"><label for="doctor-license">License number</label><input id="doctor-license" name="licenseNumber" required minlength="3" maxlength="60"></div>
       <div class="field"><label for="doctor-phone">Phone</label><input id="doctor-phone" name="phone" type="tel" minlength="7" maxlength="30"></div>
-      <div class="field"><label for="doctor-email">Email</label><input id="doctor-email" name="email" type="email" maxlength="160"></div>
+      <div class="field"><label for="doctor-email">Login email</label><input id="doctor-email" name="email" type="email" required maxlength="160" autocomplete="email"></div>
+      <div class="field"><label for="doctor-password">Temporary password</label><input id="doctor-password" name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></div>
     </div><div class="form-actions"><a class="secondary-btn" href="#patients">Cancel</a><button class="primary-btn" type="submit">Add doctor</button></div></form>`;
   document.querySelector("#doctor-form").onsubmit = async (event) => {
     event.preventDefault();
@@ -220,7 +228,33 @@ function doctorForm() {
         method: "POST",
         body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))),
       });
-      showToast("Doctor added to the directory");
+      showToast("Doctor added with a restricted portal account");
+      directoryTabAfterReload = "doctors";
+      await patients();
+    } catch (error) {
+      showToast(error.message);
+      button.disabled = false;
+    }
+  };
+}
+
+function doctorAccountForm(doctor) {
+  app.innerHTML =
+    page(`Set up login for ${doctor.name}`, "The doctor will only be able to access patients assigned to them.") +
+    `<form class="surface panel" id="doctor-account-form"><div class="form-grid">
+      <div class="field"><label for="doctor-account-email">Login email</label><input id="doctor-account-email" name="email" type="email" value="${escapeHtml(doctor.email)}" required maxlength="160" autocomplete="email"></div>
+      <div class="field"><label for="doctor-account-password">Temporary password</label><input id="doctor-account-password" name="password" type="password" required minlength="8" maxlength="72" autocomplete="new-password"></div>
+    </div><div class="form-actions"><a class="secondary-btn" href="#patients">Cancel</a><button class="primary-btn" type="submit">Create doctor login</button></div></form>`;
+  document.querySelector("#doctor-account-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector('button[type="submit"]');
+    button.disabled = true;
+    try {
+      await api(`doctors/${doctor.id}/account`, {
+        method: "POST",
+        body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))),
+      });
+      showToast("Doctor login created");
       directoryTabAfterReload = "doctors";
       await patients();
     } catch (error) {
@@ -436,7 +470,7 @@ async function startAdmin() {
   try {
     const result = await api("session");
     if (result.session.role !== "admin") {
-      location.assign(result.session.role === "patient" ? "consultation-history.html" : "patient-login.html");
+      location.assign(result.session.role === "doctor" ? "doctor.html" : result.session.role === "patient" ? "consultation-history.html" : "patient-login.html");
       return;
     }
     adminName = [result.session.firstName, result.session.lastName]
@@ -453,6 +487,23 @@ async function startAdmin() {
     });
     document.querySelectorAll(".user-card .avatar, .topbar .avatar-light").forEach((element) => {
       element.textContent = initials;
+    });
+    document.querySelector("#admin-logout")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      button.textContent = "Logging out…";
+      try {
+        const response = await fetch("/api/logout", { method: "POST" });
+        if (!response.ok && response.status !== 401) {
+          throw new Error("Could not log out. Please try again.");
+        }
+        sessionStorage.removeItem("careflowPatient");
+        location.assign("patient-login.html");
+      } catch (error) {
+        showToast(error.message);
+        button.disabled = false;
+        button.textContent = "Log out";
+      }
     });
     window.addEventListener("hashchange", route);
     await route();

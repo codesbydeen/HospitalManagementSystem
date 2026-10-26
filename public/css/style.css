@@ -424,6 +424,46 @@ h2 {
   color: var(--ink);
   background: #fff;
 }
+.password-input {
+  position: relative;
+  width: 100%;
+}
+.password-input > input {
+  padding-right: 44px;
+}
+button.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  place-items: center;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+button.password-toggle:hover {
+  color: var(--ink);
+  background: var(--lavender);
+}
+button.password-toggle:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 1px;
+}
+.password-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
 .field textarea {
   min-height: 92px;
   resize: vertical;
