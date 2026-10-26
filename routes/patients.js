@@ -49,6 +49,10 @@ router.get('/:id', requirePatient, async (req, res, next) => {
       CONCAT('Dr. ', d.first_name, ' ', d.last_name) AS doctor
       FROM appointments a LEFT JOIN doctors d ON d.doctor_id = a.doctor_id
       WHERE a.patient_id = ? ORDER BY a.preferred_date DESC, a.id DESC`, [patientId]);
+    const [statusHistory] = await pool.execute(`SELECT h.appointment_id AS appointmentId,
+      h.status, h.changed_at AS changedAt, h.changed_by_role AS changedByRole
+      FROM appointment_status_history h JOIN appointments a ON a.id = h.appointment_id
+      WHERE a.patient_id = ? ORDER BY h.changed_at DESC`, [patientId]);
     const [consultations] = await pool.execute(`SELECT c.consultation_id AS id,
       c.appointment_id AS appointmentId, c.diagnosis, c.clinical_notes AS clinicalNotes,
       c.treatment_plan AS treatmentPlan, c.follow_up_date AS followUpDate,
@@ -59,12 +63,13 @@ router.get('/:id', requirePatient, async (req, res, next) => {
       WHERE a.patient_id = ? ORDER BY c.created_at DESC`, [patientId]);
     const [prescriptions] = await pool.execute(`SELECT p.prescription_id AS id,
       p.quantity, p.instructions, p.status, p.created_at AS createdAt,
+      p.ready_at AS readyAt,
       m.medication_name AS medication, m.dosage
       FROM prescriptions p JOIN consultations c ON c.consultation_id = p.consultation_id
       JOIN appointments a ON a.id = c.appointment_id
       JOIN pharmacy_inventory m ON m.medication_id = p.medication_id
       WHERE a.patient_id = ? ORDER BY p.created_at DESC`, [patientId]);
-    res.json({ patient: patientRows[0], appointments, consultations, prescriptions });
+    res.json({ patient: patientRows[0], appointments, statusHistory, consultations, prescriptions });
   } catch (error) { next(error); }
 });
 

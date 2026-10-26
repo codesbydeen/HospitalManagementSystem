@@ -119,10 +119,35 @@ async function loadConsultationHistory(session) {
         `${formatDate(appointment.appointmentAt)} · ${appointment.doctor || "Clinician to be assigned"} · ${appointment.reason}`,
       );
       addText(row, "span", "pill", appointment.status);
+      const log = result.statusHistory.filter((item) => Number(item.appointmentId) === Number(appointment.id));
+      if (log.length) {
+        addText(
+          row,
+          "small",
+          "muted",
+          `Visit log: ${log.slice().reverse().map((item) => `${item.status} · ${formatDate(item.changedAt)}`).join(" → ")}`,
+        );
+      }
       appointmentPanel.append(row);
     });
   }
   layout.append(historyPanel, appointmentPanel);
+  const prescriptionPanel = document.createElement("section");
+  prescriptionPanel.className = "surface panel";
+  addText(prescriptionPanel, "h2", "", "Your prescriptions");
+  if (!result.prescriptions.length) {
+    showEmpty(prescriptionPanel, "You do not have any prescriptions yet.");
+  } else {
+    result.prescriptions.forEach((prescription) => {
+      const item = document.createElement("article");
+      item.className = "portal-appointment";
+      addText(item, "strong", "", `${prescription.medication} ${prescription.dosage}`);
+      addText(item, "p", "", `Quantity ${prescription.quantity} · ${prescription.instructions}`);
+      addText(item, "span", "pill", prescription.status);
+      prescriptionPanel.append(item);
+    });
+  }
+  layout.append(prescriptionPanel);
   portalRoot.append(layout);
 }
 
@@ -156,8 +181,16 @@ async function loadBillingNotifications(profile) {
         description,
         "strong",
         "",
-        `${invoice.invoiceNumber} · ${invoice.department || "CareFlow service"}`,
+        `${invoice.invoiceNumber} · ${invoice.invoiceType || invoice.department || "CareFlow service"}`,
       );
+      if (invoice.items?.length) {
+        addText(
+          description,
+          "small",
+          "muted",
+          invoice.items.map((item) => `${item.description} × ${item.quantity}`).join(", "),
+        );
+      }
       addText(description, "small", "muted", `Issued ${formatDate(invoice.issuedAt)}`);
       row.append(description);
       addText(row, "strong", "invoice-total", `R ${Number(invoice.total).toFixed(2)}`);
@@ -187,6 +220,15 @@ async function loadBillingNotifications(profile) {
         title: "Prescription pending",
         detail: `${prescription.medication} ${prescription.dosage} is awaiting fulfilment.`,
         date: prescription.createdAt,
+      }),
+    );
+  profile.prescriptions
+    .filter((prescription) => prescription.status === "Ready for pickup")
+    .forEach((prescription) =>
+      updates.push({
+        title: "Prescription ready for pickup",
+        detail: `${prescription.medication} ${prescription.dosage} is ready at the pharmacy.`,
+        date: prescription.readyAt || prescription.createdAt,
       }),
     );
   profile.appointments

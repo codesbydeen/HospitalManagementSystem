@@ -25,9 +25,9 @@ const money = (value) => `R ${Number(value || 0).toFixed(2)}`;
 const pill = (value) => {
   const state = String(value || "");
   const style =
-    state === "Unpaid" || state === "Pending" || state === "Scheduled"
+    state === "Unpaid" || state === "Pending" || state === "Scheduled" || state === "Ready for pickup"
       ? "warn"
-      : state === "Cancelled" || state === "Low stock" || state === "Expiring soon"
+      : state === "Cancelled" || state === "Low stock" || state === "Expiring soon" || state === "Expired"
         ? "danger"
         : "";
   return `<span class="pill ${style}">${escapeHtml(state || "—")}</span>`;
@@ -151,13 +151,19 @@ async function patients() {
       }
       try {
         const doctors = await api("doctors/directory");
-        directory.innerHTML = `<div class="toolbar"><h2>Doctor directory</h2><input class="search" id="directory-search" placeholder="Search doctors..." aria-label="Search doctors"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Doctor</th><th>Specialty</th><th>License</th><th>Contact</th><th>Status</th><th>Portal access</th></tr></thead><tbody>${doctors.map((doctor) => `<tr><td>${escapeHtml(doctor.name)}</td><td>${escapeHtml(doctor.specialty)}</td><td>${escapeHtml(doctor.licenseNumber)}</td><td>${escapeHtml([doctor.email, doctor.phone].filter(Boolean).join(" · ") || "No contact recorded")}</td><td>${pill(doctor.isActive ? "Active" : "Inactive")}</td><td>${doctor.hasAccount ? '<span class="muted">Doctor login ready</span>' : `<button class="secondary-btn create-doctor-login" data-id="${Number(doctor.id)}" data-name="${escapeHtml(doctor.name)}" data-email="${escapeHtml(doctor.email || "")}">Set up login</button>`}</td></tr>`).join("")}</tbody></table></div>${doctors.length ? "" : '<p class="muted">No doctors have been added yet.</p>'}`;
+        directory.innerHTML = `<div class="toolbar"><h2>Doctor directory</h2><input class="search" id="directory-search" placeholder="Search doctors..." aria-label="Search doctors"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Doctor</th><th>Specialty</th><th>License</th><th>Contact</th><th>Fee</th><th>Status</th><th>Portal access</th><th>Manage</th></tr></thead><tbody>${doctors.map((doctor) => `<tr><td>${escapeHtml(doctor.name)}</td><td>${escapeHtml(doctor.specialty)}</td><td>${escapeHtml(doctor.licenseNumber)}</td><td>${escapeHtml([doctor.email, doctor.phone].filter(Boolean).join(" · ") || "No contact recorded")}</td><td>${money(doctor.consultationFee)}</td><td>${pill(doctor.isActive ? "Active" : "Inactive")}</td><td>${doctor.hasAccount ? '<span class="muted">Doctor login ready</span>' : `<button class="secondary-btn create-doctor-login" data-id="${Number(doctor.id)}" data-name="${escapeHtml(doctor.name)}" data-email="${escapeHtml(doctor.email || "")}">Set up login</button>`}</td><td><button class="secondary-btn edit-doctor-profile" data-id="${Number(doctor.id)}">Edit profile</button> <button class="secondary-btn edit-doctor-schedule" data-id="${Number(doctor.id)}">Schedule</button></td></tr>`).join("")}</tbody></table></div>${doctors.length ? "" : '<p class="muted">No doctors have been added yet.</p>'}`;
         directory.querySelectorAll(".create-doctor-login").forEach((button) => {
           button.onclick = () => doctorAccountForm({
             id: Number(button.dataset.id),
             name: button.dataset.name,
             email: button.dataset.email,
           });
+        });
+        directory.querySelectorAll(".edit-doctor-schedule").forEach((button) => {
+          button.onclick = () => doctorScheduleForm(doctors.find((doctor) => Number(doctor.id) === Number(button.dataset.id)));
+        });
+        directory.querySelectorAll(".edit-doctor-profile").forEach((button) => {
+          button.onclick = () => doctorProfileForm(doctors.find((doctor) => Number(doctor.id) === Number(button.dataset.id)));
         });
         document.querySelector("#directory-search").addEventListener("input", (event) => {
           const query = event.target.value.toLowerCase();
@@ -174,6 +180,84 @@ async function patients() {
     directoryTabAfterReload = "patients";
     document.querySelector('[data-directory="doctors"]').click();
   }
+}
+
+function doctorProfileForm(doctor) {
+  app.innerHTML = page(`Edit ${doctor.name}`, "Update clinician details and portal availability.") +
+    `<form class="surface panel" id="doctor-profile-form"><div class="form-grid">
+      <div class="field"><label for="profile-first-name">First name</label><input id="profile-first-name" name="firstName" value="${escapeHtml(doctor.firstName)}" required minlength="2" maxlength="80"></div>
+      <div class="field"><label for="profile-last-name">Last name</label><input id="profile-last-name" name="lastName" value="${escapeHtml(doctor.lastName)}" required minlength="2" maxlength="80"></div>
+      <div class="field"><label for="profile-specialty">Specialty</label><input id="profile-specialty" name="specialty" value="${escapeHtml(doctor.specialty)}" required minlength="2" maxlength="120"></div>
+      <div class="field"><label for="profile-phone">Phone</label><input id="profile-phone" name="phone" type="tel" value="${escapeHtml(doctor.phone || "")}" minlength="7" maxlength="30"></div>
+      <div class="field"><label for="profile-active">Portal availability</label><select id="profile-active" name="isActive"><option value="true" ${doctor.isActive ? "selected" : ""}>Active</option><option value="false" ${!doctor.isActive ? "selected" : ""}>Inactive</option></select></div>
+    </div><div class="form-actions"><button class="secondary-btn" id="cancel-doctor-profile" type="button">Cancel</button><button class="primary-btn" type="submit">Save profile</button></div></form>`;
+  document.querySelector("#cancel-doctor-profile").onclick = async () => {
+    await patients();
+    document.querySelector('[data-directory="doctors"]').click();
+  };
+  document.querySelector("#doctor-profile-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    const values = Object.fromEntries(new FormData(form));
+    values.isActive = values.isActive === "true";
+    button.disabled = true;
+    try {
+      await api(`doctors/${doctor.id}/profile`, { method: "PATCH", body: JSON.stringify(values) });
+      showToast("Doctor profile updated");
+      await patients();
+      document.querySelector('[data-directory="doctors"]').click();
+    } catch (error) {
+      showToast(error.message);
+      button.disabled = false;
+    }
+  };
+}
+
+function doctorScheduleForm(doctor) {
+  let schedule = doctor.availabilitySchedule;
+  if (typeof schedule === "string") schedule = JSON.parse(schedule);
+  schedule ||= { days: [0, 1, 2, 3, 4, 5, 6], startTime: "08:30", endTime: "17:00", slotMinutes: 30 };
+  const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  app.innerHTML = page(`Schedule for ${doctor.name}`, "Set the doctor's appointment availability and consultation fee.") +
+    `<form class="surface panel" id="doctor-schedule-form"><div class="form-grid">
+      <div class="field full"><span class="label">Available days</span><div class="form-grid">${weekdays.map((day, index) => `<label><input type="checkbox" name="day" value="${index}" ${schedule.days.includes(index) ? "checked" : ""}> ${day}</label>`).join("")}</div></div>
+      <div class="field"><label for="schedule-start">Start time</label><input id="schedule-start" name="startTime" type="time" value="${escapeHtml(schedule.startTime)}" required></div>
+      <div class="field"><label for="schedule-end">End time</label><input id="schedule-end" name="endTime" type="time" value="${escapeHtml(schedule.endTime)}" required></div>
+      <div class="field"><label for="schedule-slot">Appointment length (minutes)</label><select id="schedule-slot" name="slotMinutes">${[15, 30, 45, 60, 90, 120].map((minutes) => `<option value="${minutes}" ${Number(schedule.slotMinutes) === minutes ? "selected" : ""}>${minutes}</option>`).join("")}</select></div>
+      <div class="field"><label for="schedule-fee">Consultation fee (R)</label><input id="schedule-fee" name="consultationFee" type="number" min="0" max="99999999.99" step="0.01" value="${Number(doctor.consultationFee)}" required></div>
+    </div><div class="form-actions"><button class="secondary-btn" id="cancel-doctor-schedule" type="button">Cancel</button><button class="primary-btn" type="submit">Save schedule</button></div></form>`;
+  document.querySelector("#cancel-doctor-schedule").onclick = async () => {
+    await patients();
+    document.querySelector('[data-directory="doctors"]').click();
+  };
+  document.querySelector("#doctor-schedule-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button[type="submit"]');
+    const values = new FormData(form);
+    button.disabled = true;
+    try {
+      await api(`doctors/${doctor.id}/schedule`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          availabilitySchedule: {
+            days: values.getAll("day").map(Number),
+            startTime: values.get("startTime"),
+            endTime: values.get("endTime"),
+            slotMinutes: Number(values.get("slotMinutes")),
+          },
+          consultationFee: Number(values.get("consultationFee")),
+        }),
+      });
+      showToast("Doctor schedule updated");
+      await patients();
+      document.querySelector('[data-directory="doctors"]').click();
+    } catch (error) {
+      showToast(error.message);
+      button.disabled = false;
+    }
+  };
 }
 
 function patientForm() {
@@ -272,7 +356,7 @@ async function appointments() {
       "Review appointments and update their status.",
       '<button class="primary-btn" id="add-appointment">+ New appointment</button>',
     ) +
-    `<div class="surface panel"><div class="toolbar"><h2>Appointment schedule</h2><input class="search" id="appointment-search" placeholder="Search appointments..." aria-label="Search appointments"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Date & time</th><th>Patient</th><th>Clinician</th><th>Reason</th><th>Status</th></tr></thead><tbody>${rows.map((item) => `<tr><td><strong>${formatDate(item.appointmentAt)}</strong><span class="muted">${formatTime(item.appointmentAt)} · ${escapeHtml(item.source)}</span></td><td>${escapeHtml(item.patient)}</td><td>${escapeHtml(item.doctor)}<span class="muted">${escapeHtml(item.specialty)}</span></td><td>${escapeHtml(item.reason)}</td><td><select class="search status-select" aria-label="Appointment status" data-id="${Number(item.id)}">${["Pending", "Scheduled", "Checked in", "Completed", "Cancelled"].map((status) => `<option ${status === item.status ? "selected" : ""}>${status}</option>`).join("")}</select></td></tr>`).join("")}</tbody></table></div>${rows.length ? "" : '<p class="muted">No appointments have been recorded.</p>'}</div>`;
+    `<div class="surface panel"><div class="toolbar"><h2>Appointment schedule</h2><input class="search" id="appointment-search" placeholder="Search appointments..." aria-label="Search appointments"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Date & time</th><th>Patient</th><th>Clinician</th><th>Reason</th><th>Status</th><th>Check-in log</th></tr></thead><tbody>${rows.map((item) => `<tr><td><strong>${formatDate(item.appointmentAt)}</strong><span class="muted">${formatTime(item.appointmentAt)} · ${escapeHtml(item.source)}</span></td><td>${escapeHtml(item.patient)}</td><td>${escapeHtml(item.doctor)}<span class="muted">${escapeHtml(item.specialty)}</span></td><td>${escapeHtml(item.reason)}</td><td><select class="search status-select" aria-label="Appointment status" data-id="${Number(item.id)}">${["Pending", "Scheduled", "Checked in", "Cancelled", ...(item.status === "Completed" ? ["Completed"] : [])].map((status) => `<option ${status === item.status ? "selected" : ""} ${status === "Completed" ? "disabled" : ""}>${status}</option>`).join("")}</select></td><td><button class="secondary-btn appointment-history" data-id="${Number(item.id)}">History</button></td></tr>`).join("")}</tbody></table></div>${rows.length ? "" : '<p class="muted">No appointments have been recorded.</p>'}</div>`;
   document.querySelector("#add-appointment").onclick = newAppointmentForm;
   document.querySelector("#appointment-search").addEventListener("input", (event) => {
     const query = event.target.value.toLowerCase();
@@ -292,6 +376,33 @@ async function appointments() {
       } catch (error) {
         showToast(error.message);
         await appointments();
+      }
+    };
+  });
+  app.querySelectorAll(".appointment-history").forEach((button) => {
+    button.onclick = async () => {
+      button.disabled = true;
+      try {
+        const history = await api(`appointments/${button.dataset.id}/history`);
+        const tableRow = button.closest("tr");
+        const nextRow = tableRow.nextElementSibling;
+        if (nextRow?.classList.contains("appointment-history-row")) {
+          nextRow.remove();
+          return;
+        }
+        const details = document.createElement("tr");
+        details.className = "appointment-history-row";
+        const cell = document.createElement("td");
+        cell.colSpan = 6;
+        cell.textContent = history.length
+          ? history.map((item) => `${item.status} · ${item.changedByRole} · ${formatDate(item.changedAt)} ${formatTime(item.changedAt)}`).join(" | ")
+          : "No status changes have been recorded.";
+        details.append(cell);
+        tableRow.after(details);
+      } catch (error) {
+        showToast(error.message);
+      } finally {
+        button.disabled = false;
       }
     };
   });
@@ -325,13 +436,38 @@ async function newAppointmentForm() {
         <div class="field"><label for="appointment-patient">Patient</label><select id="appointment-patient" name="patientId" required><option value="">Select a patient</option>${patients.map((patient) => `<option value="${Number(patient.id)}">${escapeHtml(patient.name)} · ${escapeHtml(patient.recordNumber)}</option>`).join("")}</select></div>
         <div class="field"><label for="appointment-doctor">Doctor</label><select id="appointment-doctor" name="doctorId" required><option value="">Select a doctor</option>${activeDoctors.map((doctor) => `<option value="${Number(doctor.id)}">${escapeHtml(doctor.name)} · ${escapeHtml(doctor.specialty)}</option>`).join("")}</select></div>
         <div class="field"><label for="appointment-date">Date</label><input id="appointment-date" name="preferredDate" type="date" min="${minimumDate}" required></div>
-        <div class="field"><label for="appointment-time">Time</label><select id="appointment-time" name="preferredTime" required><option value="">Select a time</option>${Array.from({ length: 17 }, (_, index) => {
-          const minutes = 8 * 60 + 30 + index * 30;
-          return `<option value="${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}">${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}</option>`;
-        }).join("")}</select></div>
+        <div class="field"><label for="appointment-time">Available time</label><select id="appointment-time" name="preferredTime" required disabled><option value="">Select a doctor and date first</option></select></div>
         <div class="field full"><label for="appointment-reason">Reason for visit</label><input id="appointment-reason" name="reason" required minlength="3" maxlength="255"></div>
       </div><div class="form-actions"><button class="secondary-btn" id="cancel-appointment" type="button">Cancel</button><button class="primary-btn" type="submit">Create appointment</button></div></form>`;
     document.querySelector("#cancel-appointment").onclick = appointments;
+    const doctorSelect = document.querySelector("#appointment-doctor");
+    const dateInput = document.querySelector("#appointment-date");
+    const timeSelect = document.querySelector("#appointment-time");
+    const updateAvailability = async () => {
+      timeSelect.replaceChildren(new Option("Loading availability…", ""));
+      timeSelect.disabled = true;
+      if (!doctorSelect.value || !dateInput.value) {
+        timeSelect.replaceChildren(new Option("Select a doctor and date first", ""));
+        return;
+      }
+      const requestedDate = dateInput.value;
+      const doctor = activeDoctors.find((item) => Number(item.id) === Number(doctorSelect.value));
+      try {
+        const availability = await api(`appointments/availability?date=${encodeURIComponent(requestedDate)}&specialty=${encodeURIComponent(doctor.specialty)}`);
+        if (doctorSelect.value !== String(doctor.id) || dateInput.value !== requestedDate) return;
+        const selected = availability.find((item) => Number(item.id) === Number(doctor.id));
+        timeSelect.replaceChildren(new Option(
+          selected?.availableTimes.length ? "Select an available time" : "No available times",
+          "",
+        ));
+        (selected?.availableTimes || []).forEach((time) => timeSelect.add(new Option(time, time)));
+        timeSelect.disabled = !selected?.availableTimes.length;
+      } catch (error) {
+        timeSelect.replaceChildren(new Option(error.message, ""));
+      }
+    };
+    doctorSelect.addEventListener("change", updateAvailability);
+    dateInput.addEventListener("change", updateAvailability);
     document.querySelector("#admin-appointment-form").onsubmit = async (event) => {
       event.preventDefault();
       const form = event.currentTarget;
@@ -355,7 +491,11 @@ async function newAppointmentForm() {
 }
 
 async function pharmacy() {
-  const items = await api("pharmacy/inventory");
+  const [items, prescriptions, dispensing] = await Promise.all([
+    api("pharmacy/inventory"),
+    api("pharmacy/prescriptions"),
+    api("pharmacy/dispensing"),
+  ]);
   const stockUnits = items.reduce((total, item) => total + Number(item.stock), 0);
   const value = items.reduce(
     (total, item) => total + Number(item.stock) * Number(item.unitPrice),
@@ -366,16 +506,100 @@ async function pharmacy() {
   app.innerHTML =
     page(
       "Pharmacy & inventory",
-      "Live medication stock and expiry status.",
-      '<button class="primary-btn" id="add-medication">+ Add medication</button>',
+      "Manage inventory, prescription fulfillment, and counter sales.",
+      '<button class="secondary-btn" id="counter-sale">+ Counter sale</button> <button class="primary-btn" id="add-medication">+ Add medication</button>',
     ) +
     `<div class="kpi-grid">
       <div class="surface kpi"><span class="kpi-label">Inventory value</span><div class="kpi-value">${money(value)}</div></div>
       <div class="surface kpi"><span class="kpi-label">Stock units</span><div class="kpi-value">${stockUnits}</div></div>
       <div class="surface kpi"><span class="kpi-label">Low stock items</span><div class="kpi-value">${lowStock}</div></div>
       <div class="surface kpi"><span class="kpi-label">Expiring within 30 days</span><div class="kpi-value">${expiring}</div></div>
-    </div><div class="surface panel"><div class="panel-header"><h2>Medication inventory</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Medication</th><th>Stock</th><th>Reorder level</th><th>Expiry</th><th>Alert</th></tr></thead><tbody>${items.map((item) => `<tr><td><strong>${escapeHtml(item.name)}</strong><span class="muted">${escapeHtml(item.dosage)} · ${money(item.unitPrice)}</span></td><td>${Number(item.stock)}</td><td>${Number(item.reorderLevel)}</td><td>${formatDate(item.expiryDate)}</td><td>${pill(item.alert)}</td></tr>`).join("")}</tbody></table></div>${items.length ? "" : '<p class="muted">No medication inventory has been entered.</p>'}</div>`;
+    </div><div class="surface panel"><div class="panel-header"><h2>Medication inventory</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Medication</th><th>Stock</th><th>Reorder level</th><th>Expiry</th><th>Alert</th></tr></thead><tbody>${items.map((item) => `<tr><td><strong>${escapeHtml(item.name)}</strong><span class="muted">${escapeHtml(item.dosage)} · ${money(item.unitPrice)}</span></td><td>${Number(item.stock)}</td><td>${Number(item.reorderLevel)}</td><td>${formatDate(item.expiryDate)}</td><td>${pill(item.alert)}</td></tr>`).join("")}</tbody></table></div>${items.length ? "" : '<p class="muted">No medication inventory has been entered.</p>'}</div>
+    <div class="surface panel" style="margin-top:24px"><div class="panel-header"><h2>Prescription queue</h2><span class="muted">${prescriptions.length} awaiting action</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Patient</th><th>Medication</th><th>Quantity</th><th>Instructions</th><th>Status</th><th>Action</th></tr></thead><tbody>${prescriptions.map((item) => `<tr><td><strong>${escapeHtml(item.patient)}</strong><span class="muted">${escapeHtml(item.doctor)}</span></td><td>${escapeHtml(item.medication)} ${escapeHtml(item.dosage)}</td><td>${Number(item.quantity)}</td><td>${escapeHtml(item.instructions)}</td><td>${pill(item.status)}</td><td>${item.status === "Pending" ? `<button class="secondary-btn prescription-ready" data-id="${Number(item.id)}">Ready for pickup</button>` : ""} <button class="primary-btn prescription-dispense" data-id="${Number(item.id)}">Dispense</button></td></tr>`).join("")}</tbody></table></div>${prescriptions.length ? "" : '<p class="muted">No prescriptions are awaiting fulfillment.</p>'}</div>
+    <div class="surface panel" style="margin-top:24px"><div class="panel-header"><h2>Recent dispensing records</h2></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Patient</th><th>Medication</th><th>Quantity</th><th>Dispensed</th><th>Invoice</th></tr></thead><tbody>${dispensing.map((item) => `<tr><td>${escapeHtml(item.patient)}</td><td>${escapeHtml(item.medication)} ${escapeHtml(item.dosage)}</td><td>${Number(item.quantity)}</td><td>${formatDate(item.dispensedAt)}</td><td>${escapeHtml(item.invoiceNumber || "—")} · ${money(item.invoiceTotal)}</td></tr>`).join("")}</tbody></table></div>${dispensing.length ? "" : '<p class="muted">No prescriptions have been dispensed.</p>'}</div>`;
   document.querySelector("#add-medication").onclick = medicationForm;
+  document.querySelector("#counter-sale").onclick = counterSaleForm;
+  app.querySelectorAll(".prescription-ready").forEach((button) => {
+    button.onclick = async () => {
+      button.disabled = true;
+      try {
+        await api(`pharmacy/prescriptions/${button.dataset.id}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "Ready for pickup" }),
+        });
+        showToast("Prescription marked ready for pickup");
+        await pharmacy();
+      } catch (error) {
+        showToast(error.message);
+        button.disabled = false;
+      }
+    };
+  });
+  app.querySelectorAll(".prescription-dispense").forEach((button) => {
+    button.onclick = async () => {
+      button.disabled = true;
+      try {
+        await api(`pharmacy/prescriptions/${button.dataset.id}/dispense`, { method: "POST" });
+        showToast("Prescription dispensed and invoice generated");
+        await pharmacy();
+      } catch (error) {
+        showToast(error.message);
+        button.disabled = false;
+      }
+    };
+  });
+}
+
+async function counterSaleForm() {
+  try {
+    const [patients, inventory] = await Promise.all([api("patients"), api("pharmacy/inventory")]);
+    const available = inventory.filter((item) => Number(item.stock) > 0 && item.alert !== "Expired");
+    if (!patients.length || !available.length) {
+      showError(new Error(!patients.length ? "Add a patient record before recording a sale." : "There are no unexpired medications in stock."));
+      return;
+    }
+    app.innerHTML = page("Counter sale", "Record a pharmacy sale, update stock, and issue an invoice.") +
+      `<form class="surface panel" id="counter-sale-form"><div class="field"><label for="sale-patient">Patient</label><select id="sale-patient" name="patientId" required><option value="">Select a patient</option>${patients.map((patient) => `<option value="${Number(patient.id)}">${escapeHtml(patient.name)} · ${escapeHtml(patient.recordNumber)}</option>`).join("")}</select></div>
+      <div class="panel-header" style="margin-top:20px"><h2>Sale items</h2><button class="secondary-btn" id="add-sale-item" type="button">Add item</button></div><div id="sale-items"></div>
+      <div class="form-actions"><button class="secondary-btn" id="cancel-sale" type="button">Cancel</button><button class="primary-btn" type="submit">Complete sale and invoice</button></div></form>`;
+    const saleItems = document.querySelector("#sale-items");
+    const options = available.map((item) => `<option value="${Number(item.id)}">${escapeHtml(item.name)} ${escapeHtml(item.dosage)} · ${Number(item.stock)} in stock · ${money(item.unitPrice)}</option>`).join("");
+    const addLine = () => {
+      const row = document.createElement("div");
+      row.className = "form-grid sale-item-row";
+      row.innerHTML = `<div class="field"><label>Medication</label><select class="sale-medication" required><option value="">Select medication</option>${options}</select></div>
+        <div class="field"><label>Quantity</label><input class="sale-quantity" type="number" min="1" max="10000" value="1" required></div>
+        <div class="field"><button class="secondary-btn remove-sale-item" type="button">Remove</button></div>`;
+      row.querySelector(".remove-sale-item").onclick = () => row.remove();
+      saleItems.append(row);
+    };
+    addLine();
+    document.querySelector("#add-sale-item").onclick = addLine;
+    document.querySelector("#cancel-sale").onclick = pharmacy;
+    document.querySelector("#counter-sale-form").onsubmit = async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector('button[type="submit"]');
+      const items = [...form.querySelectorAll(".sale-item-row")].map((row) => ({
+        medicationId: row.querySelector(".sale-medication").value,
+        quantity: row.querySelector(".sale-quantity").value,
+      }));
+      button.disabled = true;
+      try {
+        const result = await api("pharmacy/sales", {
+          method: "POST",
+          body: JSON.stringify({ patientId: form.elements.patientId.value, items }),
+        });
+        showToast(`Sale completed · invoice INV-${String(result.invoiceId).padStart(5, "0")}`);
+        await pharmacy();
+      } catch (error) {
+        showToast(error.message);
+        button.disabled = false;
+      }
+    };
+  } catch (error) {
+    showError(error);
+  }
 }
 
 function medicationForm() {
@@ -424,7 +648,23 @@ async function billing() {
     `<div class="kpi-grid">
       <div class="surface kpi"><span class="kpi-label">Collected this month</span><div class="kpi-value">${money(data.totals.collectedThisMonth)}</div></div>
       <div class="surface kpi"><span class="kpi-label">Outstanding balance</span><div class="kpi-value">${money(data.totals.outstanding)}</div><span class="trend">${Number(data.totals.outstandingCount || 0)} unpaid invoice(s)</span></div>
-    </div><div class="surface panel"><div class="panel-header"><h2>Invoices</h2><span class="muted">${invoices.length} record(s)</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Invoice</th><th>Patient</th><th>Issued</th><th>Total</th><th>Status</th></tr></thead><tbody>${invoices.map((item) => `<tr><td><strong>${escapeHtml(item.invoiceNumber)}</strong></td><td>${escapeHtml(item.patient)}</td><td>${formatDate(item.issuedAt)}</td><td><strong>${money(item.total)}</strong></td><td>${pill(item.status)}</td></tr>`).join("")}</tbody></table></div>${invoices.length ? "" : '<p class="muted">No invoices have been issued.</p>'}</div>`;
+    </div><div class="surface panel"><div class="panel-header"><h2>Invoices</h2><span class="muted">${invoices.length} record(s)</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Invoice</th><th>Type</th><th>Patient</th><th>Issued</th><th>Total</th><th>Status</th></tr></thead><tbody>${invoices.map((item) => `<tr><td><strong>${escapeHtml(item.invoiceNumber)}</strong><span class="muted">${item.items.map((line) => `${escapeHtml(line.description)} × ${Number(line.quantity)}`).join(", ")}</span></td><td>${escapeHtml(item.invoiceType)}</td><td>${escapeHtml(item.patient)}</td><td>${formatDate(item.issuedAt)}</td><td><strong>${money(item.total)}</strong></td><td>${item.status === "Unpaid" ? `<select class="search invoice-status" aria-label="Invoice status" data-id="${Number(item.id)}"><option value="Unpaid" selected>Unpaid</option><option value="Paid">Paid</option><option value="Void">Void</option></select>` : pill(item.status)}</td></tr>`).join("")}</tbody></table></div>${invoices.length ? "" : '<p class="muted">No invoices have been issued.</p>'}</div>`;
+  app.querySelectorAll(".invoice-status").forEach((select) => {
+    select.onchange = async () => {
+      select.disabled = true;
+      try {
+        await api(`billing/invoices/${select.dataset.id}/status`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: select.value }),
+        });
+        showToast(`Invoice marked ${select.value.toLowerCase()}`);
+        await billing();
+      } catch (error) {
+        showToast(error.message);
+        select.disabled = false;
+      }
+    };
+  });
 }
 
 async function clinical() {

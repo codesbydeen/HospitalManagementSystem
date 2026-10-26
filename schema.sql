@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS doctors (
   phone VARCHAR(30),
   email VARCHAR(160),
   availability_schedule JSON,
+  consultation_fee DECIMAL(10,2) NOT NULL DEFAULT 500.00,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -56,6 +57,17 @@ CREATE TABLE IF NOT EXISTS appointments (
   FOREIGN KEY (doctor_id) REFERENCES doctors(doctor_id),
   INDEX idx_appointments_date (appointment_at),
   INDEX idx_appointments_status (status)
+);
+
+CREATE TABLE IF NOT EXISTS appointment_status_history (
+  history_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  appointment_id INT UNSIGNED NOT NULL,
+  status ENUM('Pending','Scheduled','Checked in','Completed','Cancelled') NOT NULL,
+  changed_by_role ENUM('admin','doctor','system') NOT NULL,
+  changed_by_id INT UNSIGNED,
+  changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+  INDEX idx_appointment_history (appointment_id, changed_at)
 );
 
 CREATE TABLE IF NOT EXISTS patient_sessions (
@@ -106,7 +118,9 @@ CREATE TABLE IF NOT EXISTS prescriptions (
   medication_id INT UNSIGNED NOT NULL,
   quantity INT UNSIGNED NOT NULL,
   instructions VARCHAR(255) NOT NULL,
-  status ENUM('Pending','Dispensed','Cancelled') NOT NULL DEFAULT 'Pending',
+  status ENUM('Pending','Ready for pickup','Dispensed','Cancelled') NOT NULL DEFAULT 'Pending',
+  ready_at DATETIME,
+  dispensed_at DATETIME,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (consultation_id) REFERENCES consultations(consultation_id),
   FOREIGN KEY (medication_id) REFERENCES pharmacy_inventory(medication_id)
@@ -117,6 +131,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   patient_id INT UNSIGNED NOT NULL,
   appointment_id INT UNSIGNED,
   prescription_id INT UNSIGNED,
+  invoice_type ENUM('Consultation','Prescription','Sale','Other') NOT NULL DEFAULT 'Other',
   subtotal DECIMAL(10,2) NOT NULL,
   tax DECIMAL(10,2) NOT NULL DEFAULT 0,
   total DECIMAL(10,2) AS (subtotal + tax) STORED,
@@ -125,4 +140,14 @@ CREATE TABLE IF NOT EXISTS invoices (
   FOREIGN KEY (patient_id) REFERENCES patients(id),
   FOREIGN KEY (appointment_id) REFERENCES appointments(id),
   FOREIGN KEY (prescription_id) REFERENCES prescriptions(prescription_id)
+);
+
+CREATE TABLE IF NOT EXISTS invoice_items (
+  invoice_item_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  invoice_id INT UNSIGNED NOT NULL,
+  description VARCHAR(255) NOT NULL,
+  quantity INT UNSIGNED NOT NULL DEFAULT 1,
+  unit_price DECIMAL(10,2) NOT NULL,
+  line_total DECIMAL(10,2) AS (quantity * unit_price) STORED,
+  FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id) ON DELETE CASCADE
 );
