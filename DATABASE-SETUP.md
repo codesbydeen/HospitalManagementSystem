@@ -45,11 +45,25 @@ Keep the administrator password private. If this is an existing MySQL data direc
 
 In VS Code, install **SQLTools** and **SQLTools MySQL/MariaDB/TiDB Driver** if they are not installed.
 
-1. Open the SQLTools sidebar and choose **Add New Connection**.
-2. Select the MySQL driver.
-3. Enter your local server details: host `127.0.0.1`, the actual listening port (currently `3307` on this project machine), and your MySQL administrator username and password.
-4. Leave the database/schema blank for this initial administrator connection if `careflow_db` has not been created yet.
-5. Save the connection and connect. Use the administrator password configured for your own MySQL installation; it is not supplied by this project.
+1. Open the **SQLTools** view. Click its database/cylinder icon in the Activity Bar. If you do not see it, press `Cmd+Shift+P`, type `SQLTools: Add New Connection`, and choose that command.
+2. Choose **Add New Connection** (usually the `+` button in the SQLTools panel).
+3. Select **MySQL** as the driver. Do not select SQLite or a URL-only connection type.
+4. In the connection form, fill in these fields:
+
+   | SQLTools field (may be named) | Value |
+   | --- | --- |
+   | Connection name | `CareFlow Admin` (any recognizable name) |
+   | Server / Server address / Host | `127.0.0.1` |
+   | Port | `3307` on this project machine |
+   | Database / Database name | `careflow_db`, or leave blank only if it has not been created yet |
+   | Username / User | `root` (or the MySQL administrator account you configured) |
+   | Password | Your MySQL administrator password |
+
+   **The host is the `Server` or `Server address` field.** Some SQLTools versions do not label it “Host.” Enter `127.0.0.1` there; do not enter the port in that field.
+
+5. If there is a **Connect using** choice, select the server/host and port option, not a connection-string option. Leave SSL disabled for this local setup unless your MySQL server was specifically configured to require it.
+6. Click **Save**. In the SQLTools sidebar, click the connection's plug/connect icon. If VS Code asks whether SQLTools may store the password, approve only if this is your private Mac.
+7. If it connects, expand the connection in the SQLTools sidebar to browse databases and tables.
 
 Do not put the MySQL administrator password in project files or use the administrator account in the CareFlow application.
 
@@ -93,16 +107,36 @@ DB_PASSWORD=your_new_local_password
 
 ## 5. Add the app connection in SQLTools
 
-Create a second SQLTools connection for regular app/database work:
+For viewing CareFlow records, create (or edit) a SQLTools connection for the restricted app account. In the SQLTools panel, choose **Add New Connection** (`+`) and select **MySQL**. Use these values:
 
-- Driver: MySQL
-- Host: `127.0.0.1`
-- Port: the actual MySQL listening port (currently `3307` on this project machine)
-- Database: `careflow_db`
-- Username: `careflow_app`
-- Password: the same local password stored in `.env`
+| SQLTools field (may be named) | Value |
+| --- | --- |
+| Connection name | `CareFlow Local` |
+| Server / Server address / Host | `127.0.0.1` |
+| Port | `3307` on this project machine |
+| Database / Database name | `careflow_db` |
+| Username / User | `careflow_app` |
+| Password | The app-account password saved in `.env` |
+
+Again, **Server / Server address is the host field**. If you already have a connection named `CareFlow Local`, right-click it and choose **Edit Connection** rather than creating a duplicate. Check that Server is `127.0.0.1` and Port is `3307`.
 
 Save the password through SQLTools/VS Code's connection prompt rather than in a committed workspace settings file. Use the administrator connection only for schema setup and administrative SQL. If SQLTools reports unknown `authProtocol` or `enableSsl` options, remove those unsupported options from that connection's driver settings; they are not standard MySQL2 connection options.
+
+### Browse or query table data in VS Code
+
+1. Connect using `CareFlow Local`.
+2. Expand the connection with its disclosure arrow. Expand `careflow_db`, then **Tables**.
+3. Right-click a table and choose **Show Table Records** (the exact wording can vary by SQLTools version).
+4. Alternatively, create a new SQL file, run a query with the SQLTools connection selected, and inspect the results panel:
+
+   ```sql
+   SELECT id, first_name, last_name, email, role
+   FROM patients
+   ORDER BY id
+   LIMIT 50;
+   ```
+
+   Do not select password or password-hash columns when browsing account data.
 
 ## 6. Create your first admin login
 
